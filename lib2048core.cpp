@@ -3,7 +3,7 @@
 #include <random>
 #include <set>
 #include <string>
-#include "lib2048.hpp"
+#include "lib2048core.hpp"
 
 gameState::gameState(gameSize size)
 {
@@ -74,6 +74,7 @@ std::vector<gameValue> __merge(std::vector<gameValue>& array)
 
 void gameState::handleMove(gameMovement move)
 {
+    bool changed = false;
     switch (move)
     {
         case gameMovement::Up:
@@ -85,11 +86,13 @@ void gameState::handleMove(gameMovement move)
                 for (auto row : this->matrix) column.push_back(row[columnIndex]);
 
                 if (move == gameMovement::Down) std::reverse(column.begin(), column.end());
-                column = __merge(column);
+                auto merged = __merge(column);
                 if (move == gameMovement::Down) std::reverse(column.begin(), column.end());
+                if (!changed) changed = compareVector(merged, column);
+                if (move == gameMovement::Down) std::reverse(merged.begin(), merged.end());
 
-                for (auto i = 0 ; i < column.size() ; i++)
-                    this->matrix[i][columnIndex] = column[i];
+                for (auto i = 0 ; i < merged.size() ; i++)
+                    this->matrix[i][columnIndex] = merged[i];
             }
             break;
         }
@@ -100,13 +103,17 @@ void gameState::handleMove(gameMovement move)
             for (auto &row : this->matrix)
             {
                 if (move == gameMovement::Right) std::reverse(row.begin(), row.end());
-                row = __merge(row);
+                auto merged = __merge(row);
                 if (move == gameMovement::Right) std::reverse(row.begin(), row.end());
+                if (!changed) changed = compareVector(merged, row);
+                if (move == gameMovement::Right) std::reverse(merged.begin(), merged.end());
+                row = merged;
             }
             break;
         }
     }
 
+    if (changed)
     if (this->count() != this->matrix.size() * this->matrix.size())
     {
         bool __new = this->newCell();

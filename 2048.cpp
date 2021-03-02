@@ -5,8 +5,8 @@
 #include <vector>
 #include <string>
 #include "SFML/Graphics.hpp"
-#include "lib2048.hpp"
-#include "utils.hpp"
+#include "lib2048core.hpp"
+#include "lib2048utils.hpp"
 
 int cellOutlineThickness = 1;
 std::unordered_map<sf::Keyboard::Key, gameMovement> MOVEMENTS
@@ -20,12 +20,23 @@ sf::Keyboard::Key RESTART_KEY = sf::Keyboard::R;
 
 sf::Clock globalClock;
 sf::Time previousFrameTime, currentFrameTime;
-sf::Font robotoMono;
+sf::Font robotoMono, montserratRegular;
 
 void initializeGlobals()
 {
     robotoMono.loadFromFile("./RobotoMono-Regular.ttf");
+    montserratRegular.loadFromFile("./Montserrat-Regular.ttf");
+
     previousFrameTime = globalClock.getElapsedTime();
+}
+
+sf::Color getCellColor(gameValue value)
+{
+    if (!value) return sf::Color(0xE6, 0xE5, 0xE2);
+    if (value < (1 << 8)) return sf::Color(0xF4, 0xD1, 0x60);
+    if (value < (1 << 12)) return sf::Color(0x8A, 0xC4, 0xD0);
+    if (value < (1 << 16)) return sf::Color(0x28, 0x52, 0x7A);
+    else return sf::Color::Black;
 }
 
 sf::Texture renderCell(gameValue value, unsigned int cellSide, unsigned int fontSize)
@@ -40,11 +51,11 @@ sf::Texture renderCell(gameValue value, unsigned int cellSide, unsigned int font
     box.setOutlineColor(sf::Color(255, 255, 255, 255));
     box.setOutlineThickness(cellOutlineThickness);
     box.setSize(sf::Vector2f(cellSide, cellSide));
-    box.setFillColor(sf::Color(0, 0, 0, 0));
+    box.setFillColor(getCellColor(value));
     cell.draw(box);
 
     // render the text
-    sf::Text text (value ? std::to_string(value) : "", robotoMono, fontSize);
+    sf::Text text (value ? std::to_string(value) : "", montserratRegular, fontSize);
     auto textBoundaryBox = text.getGlobalBounds();
     // place the number in the center
     text.setOrigin(
@@ -52,10 +63,7 @@ sf::Texture renderCell(gameValue value, unsigned int cellSide, unsigned int font
         (textBoundaryBox.height - cellSide) / 2 + textBoundaryBox.top
     );
 
-    text.setOutlineColor(sf::Color::Red);
-    text.setOutlineThickness(1);
     cell.draw(text);
-
     cell.display();
 
     return cell.getTexture();

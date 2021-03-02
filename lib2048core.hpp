@@ -2,7 +2,7 @@
 #include <vector>
 #include <string>
 #include <cstdint>
-#include "utils.hpp"
+#include "lib2048utils.hpp"
 
 typedef std::int64_t gameValue;
 typedef std::size_t gameSize;

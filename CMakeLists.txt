@@ -9,8 +9,8 @@ set(CMAKE_CXX_STANDARD 11)
 
 # add the executable
 add_executable(2048 2048.cpp)
-add_library(2048core lib2048.cpp lib2048.hpp)
-add_library(2048utils utils.cpp utils.hpp)
+add_library(2048core lib2048core.cpp lib2048core.hpp)
+add_library(2048utils lib2048utils.cpp lib2048utils.hpp)
 add_compile_options(-fsanitize=undefined,address -g)
 
 target_link_libraries(2048 2048core 2048utils sfml-graphics sfml-window sfml-system)
