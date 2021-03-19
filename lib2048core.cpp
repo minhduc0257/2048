@@ -29,8 +29,7 @@ void gameState::initialize()
 
 bool gameState::newCell()
 {
-    auto cell_count = this->size * this->size;
-    auto _ = this->random_source() % cell_count;
+    auto _ = this->random_source() % (this->size * this->size);
     if (this->matrix[_ / 4][_ % 4])
         return false;
     else
@@ -91,7 +90,7 @@ void gameState::handleMove(gameMovement move)
                 if (move == gameMovement::Down) std::reverse(column.begin(), column.end());
                 auto merged = __merge(column);
                 if (move == gameMovement::Down) std::reverse(column.begin(), column.end());
-                if (!changed) changed = compareVector(merged, column);
+                changed = changed || (!compareVector(merged, column));
                 if (move == gameMovement::Down) std::reverse(merged.begin(), merged.end());
 
                 for (auto i = 0 ; i < merged.size() ; i++)
@@ -108,7 +107,7 @@ void gameState::handleMove(gameMovement move)
                 if (move == gameMovement::Right) std::reverse(row.begin(), row.end());
                 auto merged = __merge(row);
                 if (move == gameMovement::Right) std::reverse(row.begin(), row.end());
-                if (!changed) changed = compareVector(merged, row);
+                changed = changed || (!compareVector(merged, row));
                 if (move == gameMovement::Right) std::reverse(merged.begin(), merged.end());
                 row = merged;
             }

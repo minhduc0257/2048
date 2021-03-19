@@ -8,7 +8,7 @@
 #define _2048UTILS
 
 template<class T>
-bool compareVector(std::vector<T> first, std::vector<T> second)
+bool compareVector(std::vector<T>& first, std::vector<T>& second)
 {
     if (first.size() != second.size()) return false;
     for (auto i = 0 ; i < first.size() ; i++)
