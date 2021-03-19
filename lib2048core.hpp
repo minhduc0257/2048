@@ -1,8 +1,12 @@
 #include <random>
 #include <vector>
 #include <string>
+#include <map>
 #include <cstdint>
-#include "lib2048utils.hpp"
+#include <SFML/Graphics.hpp>
+
+#ifndef _2048CORE
+#define _2048CORE
 
 typedef std::int64_t gameValue;
 typedef std::size_t gameSize;
@@ -10,6 +14,14 @@ typedef std::size_t gameSize;
 enum gameMovement
 {
     Up, Right, Down, Left
+};
+
+class gameConfig
+{
+    public:
+        std::map<gameValue, sf::Color> cellColorMapping;
+        std::map<gameValue, sf::Color> textColorMapping;
+        void setup();
 };
 
 class gameState
@@ -26,3 +38,5 @@ class gameState
         bool newCell();
         std::size_t count();
 };
+
+#endif

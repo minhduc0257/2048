@@ -3,7 +3,10 @@
 #include <random>
 #include <set>
 #include <string>
+#include <fstream>
+#include <sstream>
 #include "lib2048core.hpp"
+#include "lib2048utils.hpp"
 
 gameState::gameState(gameSize size)
 {
@@ -119,4 +122,31 @@ void gameState::handleMove(gameMovement move)
         bool __new = this->newCell();
         while (!__new) __new = this->newCell();
     }
+}
+
+std::map<gameValue, sf::Color> loadColorMapping(std::string path);
+void gameConfig::setup()
+{
+    this->cellColorMapping = loadColorMapping("./color.txt");
+    this->textColorMapping = loadColorMapping("./color2.txt");
+}
+
+std::map<gameValue, sf::Color> loadColorMapping(std::string path)
+{
+    std::stringstream buf; buf << (std::ifstream (path)).rdbuf();
+    auto lines = split(buf.str(), "\n");
+    std::transform(lines.begin(), lines.end(), lines.begin(), trim);
+    std::remove_if(lines.begin(), lines.end(), [](std::string s) { return s.length(); });
+    std::map<gameValue, sf::Color> ____;
+    std::for_each(lines.begin(), lines.end(), [&____](std::string s) {
+        auto _ = split(s, "=");
+        std::transform(_.begin(), _.end(), _.begin(), trim);
+        auto cap = std::stoll(_[0]); auto colors = split(_[1], ",");
+        std::vector<long> __ (colors.size());
+        std::transform(colors.begin(), colors.end(), __.begin(), [](std::string s) -> long {
+            return std::stol(trim(s), nullptr, 16);
+        });
+        ____[cap] = sf::Color(__[0], __[1], __[2], colors.size() >= 4 ? __[3] : 196);
+    });
+    return ____;
 }

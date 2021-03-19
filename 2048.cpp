@@ -21,6 +21,7 @@ sf::Keyboard::Key RESTART_KEY = sf::Keyboard::R;
 sf::Clock globalClock;
 sf::Time previousFrameTime, currentFrameTime;
 sf::Font robotoMono, montserratRegular;
+gameConfig config;
 
 void initializeGlobals()
 {
@@ -28,15 +29,24 @@ void initializeGlobals()
     montserratRegular.loadFromFile("./Montserrat-Regular.ttf");
 
     previousFrameTime = globalClock.getElapsedTime();
+
+    // color configuration
+    config.setup();
 }
 
 sf::Color getCellColor(gameValue value)
 {
-    if (!value) return sf::Color(0xE6, 0xE5, 0xE2);
-    if (value < (1 << 8)) return sf::Color(0xF4, 0xD1, 0x60);
-    if (value < (1 << 12)) return sf::Color(0x8A, 0xC4, 0xD0);
-    if (value < (1 << 16)) return sf::Color(0x28, 0x52, 0x7A);
-    else return sf::Color::Black;
+    sf::Color _;
+    if (config.cellColorMapping.count(value)) _ = config.cellColorMapping[value];
+    else _ = sf::Color(0xFF, 0xFF, 0xFF, 160);
+    if (value) _.a = 180 + (uint8_t) ((log2(value) / log2(2048)) * 75);
+    return _;
+}
+
+sf::Color getTextColor(gameValue value)
+{
+    if (config.cellColorMapping.count(value)) return config.textColorMapping[value];
+    return sf::Color(0, 0, 0);
 }
 
 sf::Texture renderCell(gameValue value, unsigned int cellSide, unsigned int fontSize)
@@ -62,6 +72,7 @@ sf::Texture renderCell(gameValue value, unsigned int cellSide, unsigned int font
         (textBoundaryBox.width - cellSide) / 2 + textBoundaryBox.left,
         (textBoundaryBox.height - cellSide) / 2 + textBoundaryBox.top
     );
+    text.setFillColor(getTextColor(value));
 
     cell.draw(text);
     cell.display();
