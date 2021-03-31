@@ -28,6 +28,7 @@ class gameState
 {
     public:
         std::vector<std::vector<gameValue>> matrix;
+        gameValue score;
         gameState(gameSize size);
         void initialize();
         void handleMove(gameMovement);

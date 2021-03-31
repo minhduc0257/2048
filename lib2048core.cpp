@@ -17,6 +17,7 @@ gameState::gameState(gameSize size)
 
 void gameState::initialize()
 {
+    this->score = 0;
     this->matrix.resize(this->size);
     for (auto &row : this->matrix) row.assign(this->size, 0);
 
@@ -57,8 +58,9 @@ gameValue gameState::generate()
     return (this->random_source() % 10) > 8 ? 4 : 2;
 }
 
-std::vector<gameValue> __merge(std::vector<gameValue>& array)
+std::pair<std::vector<gameValue>, gameValue> __merge(std::vector<gameValue>& array)
 {
+    gameValue out = 0;
     std::vector<gameValue> elements; elements.reserve(array.size());
     std::vector<gameValue> merged; merged.reserve(array.size());
     for (auto i : array)
@@ -66,12 +68,15 @@ std::vector<gameValue> __merge(std::vector<gameValue>& array)
 
     for (auto i = 0 ; i < elements.size() ; i++)
         if ((i + 1) < elements.size() && elements[i + 1] == elements[i])
+        {
             merged.push_back(elements[i++] * 2);
+            out += elements[i++] * 2;
+        }
         else
             merged.push_back(elements[i]);
 
     while (merged.size() < array.size()) merged.push_back(0);
-    return merged;
+    return std::make_pair(merged, out);
 }
 
 void gameState::handleMove(gameMovement move)
@@ -90,11 +95,12 @@ void gameState::handleMove(gameMovement move)
                 if (move == gameMovement::Down) std::reverse(column.begin(), column.end());
                 auto merged = __merge(column);
                 if (move == gameMovement::Down) std::reverse(column.begin(), column.end());
-                changed = changed || (!compareVector(merged, column));
-                if (move == gameMovement::Down) std::reverse(merged.begin(), merged.end());
+                changed = changed || (!compareVector(merged.first, column));
+                if (move == gameMovement::Down) std::reverse(merged.first.begin(), merged.first.end());
 
-                for (auto i = 0 ; i < merged.size() ; i++)
-                    this->matrix[i][columnIndex] = merged[i];
+                for (auto i = 0 ; i < merged.first.size() ; i++)
+                    this->matrix[i][columnIndex] = merged.first[i];
+                this->score += merged.second;
             }
             break;
         }
@@ -107,9 +113,10 @@ void gameState::handleMove(gameMovement move)
                 if (move == gameMovement::Right) std::reverse(row.begin(), row.end());
                 auto merged = __merge(row);
                 if (move == gameMovement::Right) std::reverse(row.begin(), row.end());
-                changed = changed || (!compareVector(merged, row));
-                if (move == gameMovement::Right) std::reverse(merged.begin(), merged.end());
-                row = merged;
+                changed = changed || (!compareVector(merged.first, row));
+                if (move == gameMovement::Right) std::reverse(merged.first.begin(), merged.first.end());
+                row = merged.first;
+                this->score += merged.second;
             }
             break;
         }
@@ -121,6 +128,11 @@ void gameState::handleMove(gameMovement move)
         bool __new = this->newCell();
         while (!__new) __new = this->newCell();
     }
+}
+
+bool gameState::lost()
+{
+
 }
 
 std::map<gameValue, sf::Color> loadColorMapping(std::string path);

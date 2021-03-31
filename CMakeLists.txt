@@ -14,4 +14,4 @@ set_target_properties(2048utils PROPERTIES LINKER_LANGUAGE CXX)
 add_library(2048core lib2048core.cpp lib2048core.hpp)
 add_compile_options(-fsanitize=undefined,address -g)
 
-target_link_libraries(2048 2048utils 2048core sfml-graphics sfml-window sfml-system)
+target_link_libraries(2048 2048utils 2048core sfml-audio sfml-graphics sfml-window sfml-system)

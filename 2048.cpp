@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <vector>
 #include <string>
+#include <SFML/Audio.hpp>
 #include "SFML/Graphics.hpp"
 #include "lib2048core.hpp"
 #include "lib2048utils.hpp"
@@ -20,13 +21,17 @@ sf::Keyboard::Key RESTART_KEY = sf::Keyboard::R;
 
 sf::Clock globalClock;
 sf::Time previousFrameTime, currentFrameTime;
-sf::Font robotoMono, montserratRegular;
+sf::Font robotoMono, montserratRegular, latoBold;
+sf::Sound keyClicked; sf::SoundBuffer _keyClicked;
 gameConfig config;
 
 void initializeGlobals()
 {
     robotoMono.loadFromFile("./RobotoMono-Regular.ttf");
     montserratRegular.loadFromFile("./Montserrat-Regular.ttf");
+    latoBold.loadFromFile("./Lato-Bold.ttf");
+    _keyClicked.loadFromFile("./soft-hitsoft.wav");
+    keyClicked = sf::Sound(_keyClicked);
 
     previousFrameTime = globalClock.getElapsedTime();
 
@@ -80,6 +85,35 @@ sf::Texture renderCell(gameValue value, unsigned int cellSide, unsigned int font
     return cell.getTexture();
 }
 
+sf::Texture renderScore(gameValue score, unsigned int width, unsigned int height)
+{
+    sf::RenderTexture _score;
+    _score.create(width + cellOutlineThickness * 2, height + cellOutlineThickness * 2);
+    _score.clear(sf::Color::Transparent);
+
+    sf::RectangleShape box;
+    box.setPosition(0 + cellOutlineThickness, 0 + cellOutlineThickness);
+    box.setOutlineColor(sf::Color::Black);
+    box.setOutlineThickness(cellOutlineThickness);
+    box.setSize(sf::Vector2f(width, height));
+    box.setFillColor(sf::Color::Transparent);
+    _score.draw(box);
+
+    // render the text
+    sf::Text text (std::to_string(score), latoBold, 40);
+    auto textBoundaryBox = text.getGlobalBounds();
+    text.setOrigin(
+        (textBoundaryBox.width - width) / 2 + textBoundaryBox.left,
+        (textBoundaryBox.height - height) / 2 + textBoundaryBox.top
+    );
+    text.setFillColor(sf::Color::Black);
+
+    _score.draw(text);
+    _score.display();
+
+    return _score.getTexture();
+}
+
 void entry()
 {
     // initialize window
@@ -89,10 +123,11 @@ void entry()
     gameState game (4); game.initialize();
 
     // don't overload machines
-    window.setFramerateLimit(60);
+    window.setFramerateLimit(120);
     window.setTitle("2048");
 
     bool hasKeyPressed = true;
+    sf::Sound(_keyClicked).play();
 
     while (window.isOpen())
     {
@@ -116,7 +151,10 @@ void entry()
         );
         bool __validKey = __currentKeyState != MOVEMENTS.end();
         if (__validKey && !hasKeyPressed)
+        {
             game.handleMove(MOVEMENTS[__currentKeyState->first]);
+            if (keyClicked.getStatus() != keyClicked.Playing) keyClicked.play();
+        }
         hasKeyPressed = __validKey;
 
         /**
@@ -158,6 +196,15 @@ void entry()
                 cellSprite.setPosition(baseX + cellIndex * (renderCellSide + borderSize), baseY + rowIndex * (renderCellSide + borderSize));
                 window.draw(cellSprite);
             }
+
+
+        /**
+         * Score
+         */
+        auto __ = renderScore(game.score, windowSize.x / 10 * 2, windowSize.y / 20 * 2);
+        sf::Sprite score (__);
+        score.setPosition(windowSize.x / 2 - score.getGlobalBounds().width / 2, windowSize.y / 15 - score.getGlobalBounds().height / 2);
+        window.draw(score);
 
         window.display();
     }
