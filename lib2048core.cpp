@@ -94,8 +94,8 @@ void gameState::handleMove(gameMovement move)
 
                 if (move == gameMovement::Down) std::reverse(column.begin(), column.end());
                 auto merged = __merge(column);
-                if (move == gameMovement::Down) std::reverse(column.begin(), column.end());
                 changed = changed || (!compareVector(merged.first, column));
+                if (move == gameMovement::Down) std::reverse(column.begin(), column.end());
                 if (move == gameMovement::Down) std::reverse(merged.first.begin(), merged.first.end());
 
                 for (auto i = 0 ; i < merged.first.size() ; i++)
@@ -112,8 +112,8 @@ void gameState::handleMove(gameMovement move)
             {
                 if (move == gameMovement::Right) std::reverse(row.begin(), row.end());
                 auto merged = __merge(row);
-                if (move == gameMovement::Right) std::reverse(row.begin(), row.end());
                 changed = changed || (!compareVector(merged.first, row));
+                if (move == gameMovement::Right) std::reverse(row.begin(), row.end());
                 if (move == gameMovement::Right) std::reverse(merged.first.begin(), merged.first.end());
                 row = merged.first;
                 this->score += merged.second;

@@ -29,10 +29,12 @@ class gameState
     public:
         std::vector<std::vector<gameValue>> matrix;
         gameValue score;
+        bool lost;
         gameState(gameSize size);
         void initialize();
         void handleMove(gameMovement);
     private:
+        bool checkLosingState();
         gameSize size;
         std::random_device random_source;
         gameValue generate();
