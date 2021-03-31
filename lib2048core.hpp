@@ -13,7 +13,7 @@ typedef std::size_t gameSize;
 
 enum gameMovement
 {
-    Up, Right, Down, Left
+    Up, Right, Down, Left, META_Restart
 };
 
 class gameConfig

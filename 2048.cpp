@@ -10,14 +10,15 @@
 #include "lib2048utils.hpp"
 
 int cellOutlineThickness = 1;
+sf::Keyboard::Key RESTART_KEY = sf::Keyboard::R;
 std::unordered_map<sf::Keyboard::Key, gameMovement> MOVEMENTS
 {
     std::make_pair(sf::Keyboard::Up, gameMovement::Up),
     std::make_pair(sf::Keyboard::Right, gameMovement::Right),
     std::make_pair(sf::Keyboard::Down, gameMovement::Down),
-    std::make_pair(sf::Keyboard::Left, gameMovement::Left)
+    std::make_pair(sf::Keyboard::Left, gameMovement::Left),
+    std::make_pair(RESTART_KEY, gameMovement::META_Restart)
 };
-sf::Keyboard::Key RESTART_KEY = sf::Keyboard::R;
 
 sf::Clock globalClock;
 sf::Time previousFrameTime, currentFrameTime;

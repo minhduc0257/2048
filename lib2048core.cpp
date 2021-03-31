@@ -120,6 +120,12 @@ void gameState::handleMove(gameMovement move)
             }
             break;
         }
+
+        case gameMovement::META_Restart:
+        {
+            this->initialize();
+            return;
+        }
     }
 
     if (changed)
