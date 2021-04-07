@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <vector>
 #include <string>
+#include <iostream>
 #include <SFML/Audio.hpp>
 #include "SFML/Graphics.hpp"
 #include "lib2048core.hpp"
@@ -24,6 +25,8 @@ sf::Clock globalClock;
 sf::Time previousFrameTime, currentFrameTime;
 sf::Font robotoMono, montserratRegular, latoBold;
 sf::Sound keyClicked; sf::SoundBuffer _keyClicked;
+sf::Sound keyClickedFail; sf::SoundBuffer _keyClickedFail;
+sf::Music backgroundMusic;
 gameConfig config;
 
 void initializeGlobals()
@@ -32,7 +35,11 @@ void initializeGlobals()
     montserratRegular.loadFromFile("./Montserrat-Regular.ttf");
     latoBold.loadFromFile("./Lato-Bold.ttf");
     _keyClicked.loadFromFile("./soft-hitsoft.wav");
+    _keyClickedFail.loadFromFile("./sectionfail.wav");
     keyClicked = sf::Sound(_keyClicked);
+    keyClickedFail = sf::Sound(_keyClickedFail);
+    backgroundMusic.openFromFile("./pause-loop.wav");
+    backgroundMusic.setVolume(50);
 
     previousFrameTime = globalClock.getElapsedTime();
 
@@ -143,6 +150,9 @@ void entry()
         window.clear(sf::Color(0xd6d5d200));
         auto windowSize = window.getSize();
 
+        backgroundMusic.setLoop(true);
+        if (backgroundMusic.getStatus() != sf::SoundSource::Status::Playing) backgroundMusic.play();
+
         /**
          * Handle keys
          */
@@ -153,8 +163,11 @@ void entry()
         bool __validKey = __currentKeyState != MOVEMENTS.end();
         if (__validKey && !hasKeyPressed)
         {
-            game.handleMove(MOVEMENTS[__currentKeyState->first]);
-            if (keyClicked.getStatus() != keyClicked.Playing) keyClicked.play();
+            auto changed = game.handleMove(MOVEMENTS[__currentKeyState->first]);
+            if (changed)
+                keyClicked.play();
+            else
+                keyClickedFail.play();
         }
         hasKeyPressed = __validKey;
 

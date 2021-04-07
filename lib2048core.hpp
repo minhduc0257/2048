@@ -32,7 +32,7 @@ class gameState
         bool lost;
         gameState(gameSize size);
         void initialize();
-        void handleMove(gameMovement);
+        bool handleMove(gameMovement);
     private:
         bool checkLosingState();
         gameSize size;

@@ -5,6 +5,7 @@
 #include <string>
 #include <fstream>
 #include <sstream>
+#include <tuple>
 #include "lib2048core.hpp"
 #include "lib2048utils.hpp"
 
@@ -17,12 +18,13 @@ gameState::gameState(gameSize size)
 
 void gameState::initialize()
 {
+    this->lost = false;
     this->score = 0;
     this->matrix.resize(this->size);
     for (auto &row : this->matrix) row.assign(this->size, 0);
 
     if (this->random_source.entropy() == 0)
-        LOG("random_device entropy is zero; randomness will be severely limited.")
+        LOG("random_device entropy is zero; randomness will be severely limited.\n")
 
     const int max = 2; int made = 0;
     while (made < max) made += this->newCell();
@@ -79,7 +81,7 @@ std::pair<std::vector<gameValue>, gameValue> __merge(std::vector<gameValue>& arr
     return std::make_pair(merged, out);
 }
 
-void gameState::handleMove(gameMovement move)
+bool gameState::handleMove(gameMovement move)
 {
     bool changed = false;
     switch (move)
@@ -124,7 +126,7 @@ void gameState::handleMove(gameMovement move)
         case gameMovement::META_Restart:
         {
             this->initialize();
-            return;
+            return true;
         }
     }
 
@@ -134,11 +136,32 @@ void gameState::handleMove(gameMovement move)
         bool __new = this->newCell();
         while (!__new) __new = this->newCell();
     }
+
+    return changed;
 }
 
-bool gameState::lost()
+bool gameState::checkLosingState()
 {
+    auto size = this->matrix.size();
+    for (auto row = 0 ; row < size; row++)
+        for (auto column = 0; column < size; column++)
+        {
+            auto _ = this->matrix[row][column]; if (!_) return false;
 
+            if ((row > 0)
+                && (this->matrix[row - 1][column] == _ || this->matrix[row - 1][column] == 0))
+                    return false;
+            if ((row + 1 < size)
+                && (this->matrix[row + 1][column] == _ || this->matrix[row + 1][column] == 0))
+                    return false;
+            if (
+                (column > 0)
+                && (this->matrix[row][column - 1] == _ || this->matrix[row][column - 1] == 0)) return false;
+            if (
+                (column + 1 < size)
+                && (this->matrix[row][column + 1] == _ || this->matrix[row][column + 1] == 0)) return false;
+        }
+    return true;
 }
 
 std::map<gameValue, sf::Color> loadColorMapping(std::string path);
