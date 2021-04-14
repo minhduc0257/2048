@@ -11,17 +11,20 @@
 #include "lib2048utils.hpp"
 
 int cellOutlineThickness = 1;
-sf::Keyboard::Key RESTART_KEY = sf::Keyboard::R;
+float scanWidthMultiplier = 0.5;
+int scanTimeMsec = 500;
+bool hasKeyPressed = true;
 std::unordered_map<sf::Keyboard::Key, gameMovement> MOVEMENTS
 {
     std::make_pair(sf::Keyboard::Up, gameMovement::Up),
     std::make_pair(sf::Keyboard::Right, gameMovement::Right),
     std::make_pair(sf::Keyboard::Down, gameMovement::Down),
     std::make_pair(sf::Keyboard::Left, gameMovement::Left),
-    std::make_pair(RESTART_KEY, gameMovement::META_Restart)
+    std::make_pair(sf::Keyboard::R, gameMovement::META_Restart)
 };
 
 sf::Clock globalClock;
+sf::Time lastKeyPressedTime; gameMovement lastMovement = gameMovement::Up;
 sf::Time previousFrameTime, currentFrameTime;
 sf::Font robotoMono, montserratRegular, latoBold;
 sf::Sound keyClicked; sf::SoundBuffer _keyClicked;
@@ -134,7 +137,6 @@ void entry()
     window.setFramerateLimit(120);
     window.setTitle("2048");
 
-    bool hasKeyPressed = true;
     sf::Sound(_keyClicked).play();
 
     while (window.isOpen())
@@ -164,8 +166,11 @@ void entry()
         if (__validKey && !hasKeyPressed)
         {
             auto changed = game.handleMove(MOVEMENTS[__currentKeyState->first]);
-            if (changed)
+            if (changed) {
                 keyClicked.play();
+                lastKeyPressedTime = globalClock.getElapsedTime();
+                lastMovement = MOVEMENTS[__currentKeyState->first];
+            }
             else
                 keyClickedFail.play();
         }
@@ -211,6 +216,49 @@ void entry()
                 window.draw(cellSprite);
             }
 
+        auto lastKeyElapsedMsec = globalClock.getElapsedTime().asMilliseconds() - lastKeyPressedTime.asMilliseconds();
+        auto paddedScanTimeMsec = (1 + scanWidthMultiplier) * scanTimeMsec;
+        if (lastKeyPressedTime.asMilliseconds() && lastKeyElapsedMsec < paddedScanTimeMsec) {
+            auto scanCoverage = (cellSide + cellOutlineThickness * 2) * matrix.size() + (matrix.size() - 1) * borderSize;
+            auto scanWidth = scanCoverage * scanWidthMultiplier;
+            bool increment = true; gameSize from = 0, to = scanWidth;
+            auto progress = float(scanTimeMsec - lastKeyElapsedMsec) / scanTimeMsec;
+            switch (lastMovement) {
+                case gameMovement::Down:
+                case gameMovement::Right:
+                    increment = false; from = scanWidth, to = 0; progress = 1 - progress;
+                case gameMovement::Up:
+                case gameMovement::Left: {
+                    for (auto i = from ; (from > to ? i > to : i < to) ; increment ? i++ : i--) {
+                        auto y = baseY
+                            + progress * matrixSide
+                            + (matrixSide / 2) - scanWidth + 1 + i;
+                        auto x = baseX
+                            + progress * matrixSide
+                            + (matrixSide / 2) - scanWidth + 1 + i;
+                        sf::RectangleShape scan;
+                        auto c = sf::Color::White;
+                        if (lastMovement == gameMovement::Up || lastMovement == gameMovement::Down) {
+                            if (y < baseY || y > baseY + scanCoverage) continue;
+                            scan.setSize(sf::Vector2f(scanCoverage, 1));
+                            scan.setPosition(baseX, y);
+                            c.a = 0xFF * ((lastMovement == gameMovement::Up ? 1 - float(i + 1) : float(i + 1)) / scanWidth);
+                        }
+
+                        if (lastMovement == gameMovement::Left || lastMovement == gameMovement::Right) {
+                            if (x < baseX || x > baseX + scanCoverage) continue;
+                            scan.setSize(sf::Vector2f(1, scanCoverage));
+                            scan.setPosition(x, baseY);
+                            c.a = 0xFF * ((lastMovement == gameMovement::Left ? 1 - float(i + 1) : float(i + 1)) / scanWidth);
+                        }
+
+
+                        scan.setFillColor(c);
+                        window.draw(scan);
+                    }
+                }
+            };
+        }
 
         /**
          * Score
