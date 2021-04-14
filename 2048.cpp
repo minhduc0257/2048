@@ -22,7 +22,7 @@ std::unordered_map<sf::Keyboard::Key, gameAction> ACTIONS
 {
     std::make_pair(sf::Keyboard::M, gameAction::Mute),
     std::make_pair(sf::Keyboard::Escape, gameAction::Pause),
-    std::make_pair(sf::Keyboard::L, gameAction::Lose)
+    // std::make_pair(sf::Keyboard::L, gameAction::Lose)
 };
 
 std::unordered_map<sf::Keyboard::Key, gameMovement> MOVEMENTS
