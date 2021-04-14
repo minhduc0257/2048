@@ -143,6 +143,8 @@ void entry()
 
     gameState game (4); game.initialize();
 
+    bool hasFocus = true;
+
     // don't overload machines
     window.setFramerateLimit(120);
     window.setTitle("2048");
@@ -152,7 +154,11 @@ void entry()
     while (window.isOpen())
     {
         sf::Event event;
-        while (window.pollEvent(event)) if (event.type == sf::Event::Closed) window.close();
+        while (window.pollEvent(event)) {
+            if (event.type == sf::Event::Closed) window.close();
+            if (event.type == sf::Event::GainedFocus) hasFocus = true;
+            if (event.type == sf::Event::LostFocus) hasFocus = false;
+        };
 
         /**
          * Resize the view port should the window get resized
@@ -209,7 +215,7 @@ void entry()
         }
         hasActionKeyPressed = __validActionKey;
 
-        if (!paused) {
+        if (!paused && hasFocus) {
             /**
              * Handle keys
              */
