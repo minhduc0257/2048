@@ -10,6 +10,8 @@ set(CMAKE_CXX_STANDARD 11)
 # add the executable
 add_executable(2048 2048.cpp)
 add_library(2048utils lib2048utils.hpp)
+add_library(2048ui lib2048ui.hpp)
+set_target_properties(2048ui PROPERTIES LINKER_LANGUAGE CXX)
 set_target_properties(2048utils PROPERTIES LINKER_LANGUAGE CXX)
 add_library(2048core lib2048core.cpp lib2048core.hpp)
 add_compile_options(-fsanitize=undefined,address -g)

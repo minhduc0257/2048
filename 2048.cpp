@@ -9,11 +9,20 @@
 #include "SFML/Graphics.hpp"
 #include "lib2048core.hpp"
 #include "lib2048utils.hpp"
+#include "lib2048ui.hpp"
 
 int cellOutlineThickness = 1;
 float scanWidthMultiplier = 0.5;
 int scanTimeMsec = 500;
-bool hasKeyPressed = true;
+bool hasGameKeyPressed = true;
+bool muted = false;
+bool hasActionKeyPressed = true;
+std::unordered_map<sf::Keyboard::Key, gameAction> ACTIONS
+{
+    std::make_pair(sf::Keyboard::M, gameAction::Mute),
+    std::make_pair(sf::Keyboard::Escape, gameAction::Pause)
+};
+
 std::unordered_map<sf::Keyboard::Key, gameMovement> MOVEMENTS
 {
     std::make_pair(sf::Keyboard::Up, gameMovement::Up),
@@ -154,27 +163,52 @@ void entry()
 
         backgroundMusic.setLoop(true);
         if (backgroundMusic.getStatus() != sf::SoundSource::Status::Playing) backgroundMusic.play();
+        backgroundMusic.setVolume(muted ? 0 : 100);
+        keyClicked.setVolume(muted ? 0 : 100);
+        keyClickedFail.setVolume(muted ? 0 : 100);
 
         /**
          * Handle keys
          */
-        auto __currentKeyState = std::find_if(
+        auto __currentGameKey = std::find_if(
             MOVEMENTS.begin(), MOVEMENTS.end(),
             [](std::pair<sf::Keyboard::Key, gameMovement> _) { return sf::Keyboard::isKeyPressed(_.first); }
         );
-        bool __validKey = __currentKeyState != MOVEMENTS.end();
-        if (__validKey && !hasKeyPressed)
+        bool __validKey = __currentGameKey != MOVEMENTS.end();
+        if (__validKey && !hasGameKeyPressed)
         {
-            auto changed = game.handleMove(MOVEMENTS[__currentKeyState->first]);
+            auto changed = game.handleMove(MOVEMENTS[__currentGameKey->first]);
             if (changed) {
                 keyClicked.play();
                 lastKeyPressedTime = globalClock.getElapsedTime();
-                lastMovement = MOVEMENTS[__currentKeyState->first];
+                lastMovement = MOVEMENTS[__currentGameKey->first];
             }
             else
                 keyClickedFail.play();
         }
-        hasKeyPressed = __validKey;
+        hasGameKeyPressed = __validKey;
+
+
+        /**
+         * Handle action keys
+         */
+        auto __currentActionKey = std::find_if(
+            ACTIONS.begin(), ACTIONS.end(),
+            [](std::pair<sf::Keyboard::Key, gameAction> _) { return sf::Keyboard::isKeyPressed(_.first); }
+        );
+        bool __validActionKey = __currentActionKey != ACTIONS.end();
+        if (__validActionKey && !hasActionKeyPressed)
+        {
+            auto _ = ACTIONS[__currentActionKey->first];
+            switch (_) {
+                case gameAction::Mute: {
+                    muted = !muted;
+                    break;
+                }
+            }
+
+        }
+        hasActionKeyPressed = __validActionKey;
 
         /**
          * FPS counter
@@ -182,7 +216,7 @@ void entry()
         currentFrameTime = globalClock.getElapsedTime();
         float fps = 1.0f / (currentFrameTime.asSeconds() - previousFrameTime.asSeconds());
         previousFrameTime = currentFrameTime;
-        sf::Text fpsCounter (std::to_string(long(ceil(fps))) + " FPS", robotoMono, 14);
+        sf::Text fpsCounter (std::to_string(long(ceil(fps))) + " FPS" + (muted ? " - Muted" : ""), robotoMono, 14);
         fpsCounter.setPosition(
             std::min<unsigned int>(windowSize.x / 100, 5),
             (windowSize.y * 99.5f / 100) - fpsCounter.getGlobalBounds().height - fpsCounter.getGlobalBounds().top - 1
