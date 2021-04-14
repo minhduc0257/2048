@@ -157,7 +157,7 @@ void entry()
         while (window.pollEvent(event)) {
             if (event.type == sf::Event::Closed) window.close();
             if (event.type == sf::Event::GainedFocus) hasFocus = true;
-            if (event.type == sf::Event::LostFocus) hasFocus = false;
+            if (event.type == sf::Event::LostFocus) { hasFocus = false; paused = true; };
         };
 
         /**
@@ -174,6 +174,148 @@ void entry()
         keyClicked.setVolume((muted || paused) ? 0 : 100);
         keyClickedFail.setVolume((muted || paused) ? 0 : 100);
 
+        if (hasFocus) {
+            /**
+             * Handle action keys
+             */
+            auto __currentActionKey = std::find_if(
+                ACTIONS.begin(), ACTIONS.end(),
+                [](std::pair<sf::Keyboard::Key, gameAction> _) { return sf::Keyboard::isKeyPressed(_.first); }
+            );
+            bool __validActionKey = __currentActionKey != ACTIONS.end();
+            if (__validActionKey && !hasActionKeyPressed)
+            {
+                auto _ = ACTIONS[__currentActionKey->first];
+                switch (_) {
+                    case gameAction::Mute: {
+                        muted = !muted;
+                        break;
+                    }
+                    case gameAction::Pause: {
+                        paused = !paused;
+                        break;
+                    }
+                }
+            }
+            hasActionKeyPressed = __validActionKey;
+
+            if (!paused) {
+                /**
+                 * Handle keys
+                 */
+                auto __currentGameKey = std::find_if(
+                    MOVEMENTS.begin(), MOVEMENTS.end(),
+                    [](std::pair<sf::Keyboard::Key, gameMovement> _) { return sf::Keyboard::isKeyPressed(_.first); }
+                );
+                bool __validKey = __currentGameKey != MOVEMENTS.end();
+                if (__validKey && !hasGameKeyPressed)
+                {
+                    auto changed = game.handleMove(MOVEMENTS[__currentGameKey->first]);
+                    if (changed) {
+                        keyClicked.play();
+                        lastKeyPressedTime = globalClock.getElapsedTime();
+                        lastMovement = MOVEMENTS[__currentGameKey->first];
+                    }
+                    else
+                        keyClickedFail.play();
+                }
+                hasGameKeyPressed = __validKey;
+            }
+        }
+
+        /**
+         * Game field
+         *
+         * The game field will be centered in the window horizontally.
+         * Width and height should be 75% of the window width/height.
+         * Should they be different, the minimum of two will be used.
+         */
+        auto& matrix = game.matrix;
+        unsigned int
+            baseDimension = std::min(windowSize.x, windowSize.y),
+            matrixSide = baseDimension / 4 * 3;
+        unsigned int
+            baseX = (windowSize.x - matrixSide) >> 1, baseY = (windowSize.y - matrixSide) >> 1,
+            cellSide = matrixSide / matrix[0].size(),
+            borderSize = cellSide / 8;
+            cellSide -= borderSize;
+        for (auto rowIndex = 0 ; rowIndex < matrix.size() ; rowIndex++)
+            for (auto cellIndex = 0 ; cellIndex < matrix[rowIndex].size() ; cellIndex++)
+            {
+                auto cell = renderCell(matrix[rowIndex][cellIndex], cellSide, baseDimension / 20);
+                sf::Sprite cellSprite (cell);
+                auto renderCellSide = cell.getSize().x;
+                cellSprite.setPosition(baseX + cellIndex * (renderCellSide + borderSize), baseY + rowIndex * (renderCellSide + borderSize));
+                window.draw(cellSprite);
+            }
+
+        auto lastKeyElapsedMsec = globalClock.getElapsedTime().asMilliseconds() - lastKeyPressedTime.asMilliseconds();
+        auto paddedScanTimeMsec = (1 + scanWidthMultiplier) * scanTimeMsec;
+        if (lastKeyPressedTime.asMilliseconds() && lastKeyElapsedMsec < paddedScanTimeMsec) {
+            auto scanCoverage = (cellSide + cellOutlineThickness * 2) * matrix.size() + (matrix.size() - 1) * borderSize;
+            auto scanWidth = scanCoverage * scanWidthMultiplier;
+            bool increment = true; gameSize from = 0, to = scanWidth;
+            auto progress = float(scanTimeMsec - lastKeyElapsedMsec) / scanTimeMsec;
+            switch (lastMovement) {
+                case gameMovement::Down:
+                case gameMovement::Right:
+                    increment = false; from = scanWidth, to = 0; progress = 1 - progress;
+                case gameMovement::Up:
+                case gameMovement::Left: {
+                    for (auto i = from ; (from > to ? i > to : i < to) ; increment ? i++ : i--) {
+                        auto y = baseY
+                            + progress * matrixSide
+                            + (matrixSide / 2) - scanWidth + 1 + i;
+                        auto x = baseX
+                            + progress * matrixSide
+                            + (matrixSide / 2) - scanWidth + 1 + i;
+                        sf::RectangleShape scan;
+                        auto c = sf::Color::White;
+                        if (lastMovement == gameMovement::Up || lastMovement == gameMovement::Down) {
+                            if (y < baseY || y > baseY + scanCoverage) continue;
+                            scan.setSize(sf::Vector2f(scanCoverage, 1));
+                            scan.setPosition(baseX, y);
+                            c.a = 0xC0 * ((lastMovement == gameMovement::Up ? 1 - float(i + 1) : float(i + 1)) / scanWidth);
+                        }
+
+                        if (lastMovement == gameMovement::Left || lastMovement == gameMovement::Right) {
+                            if (x < baseX || x > baseX + scanCoverage) continue;
+                            scan.setSize(sf::Vector2f(1, scanCoverage));
+                            scan.setPosition(x, baseY);
+                            c.a = 0xFF * ((lastMovement == gameMovement::Left ? 1 - float(i + 1) : float(i + 1)) / scanWidth);
+                        }
+
+
+                        scan.setFillColor(c);
+                        window.draw(scan);
+                    }
+                }
+            };
+        }
+
+        /**
+         * Score
+         */
+        auto __ = renderScore(game.score, windowSize.x / 10 * 2, windowSize.y / 20 * 2);
+        sf::Sprite score (__);
+        score.setPosition(windowSize.x / 2 - score.getGlobalBounds().width / 2, windowSize.y / 15 - score.getGlobalBounds().height / 2);
+        window.draw(score);
+
+        if (paused) {
+            sf::RectangleShape _;
+            _.setSize(sf::Vector2f(windowSize));
+            _.setFillColor(sf::Color(0xFF, 0xFF, 0xFF, 0xFF / 5 * 4));
+            _.setPosition(0, 0);
+
+
+            sf::Text pausedText ("Paused", latoBold, 50);
+            auto textBoundaryBox = pausedText.getGlobalBounds();
+            pausedText.setPosition(windowSize.x / 2 - textBoundaryBox.width / 2, windowSize.y / 2 - textBoundaryBox.height / 2);
+            pausedText.setFillColor(sf::Color::Black);
+
+            window.draw(_);
+            window.draw(pausedText);
+        }
 
         /**
          * FPS counter
@@ -188,133 +330,6 @@ void entry()
         );
         fpsCounter.setFillColor(sf::Color::Black);
         window.draw(fpsCounter);
-
-
-        /**
-         * Handle action keys
-         */
-        auto __currentActionKey = std::find_if(
-            ACTIONS.begin(), ACTIONS.end(),
-            [](std::pair<sf::Keyboard::Key, gameAction> _) { return sf::Keyboard::isKeyPressed(_.first); }
-        );
-        bool __validActionKey = __currentActionKey != ACTIONS.end();
-        if (__validActionKey && !hasActionKeyPressed)
-        {
-            auto _ = ACTIONS[__currentActionKey->first];
-            switch (_) {
-                case gameAction::Mute: {
-                    muted = !muted;
-                    break;
-                }
-                case gameAction::Pause: {
-                    paused = !paused;
-                    break;
-                }
-            }
-
-        }
-        hasActionKeyPressed = __validActionKey;
-
-        if (!paused && hasFocus) {
-            /**
-             * Handle keys
-             */
-            auto __currentGameKey = std::find_if(
-                MOVEMENTS.begin(), MOVEMENTS.end(),
-                [](std::pair<sf::Keyboard::Key, gameMovement> _) { return sf::Keyboard::isKeyPressed(_.first); }
-            );
-            bool __validKey = __currentGameKey != MOVEMENTS.end();
-            if (__validKey && !hasGameKeyPressed)
-            {
-                auto changed = game.handleMove(MOVEMENTS[__currentGameKey->first]);
-                if (changed) {
-                    keyClicked.play();
-                    lastKeyPressedTime = globalClock.getElapsedTime();
-                    lastMovement = MOVEMENTS[__currentGameKey->first];
-                }
-                else
-                    keyClickedFail.play();
-            }
-            hasGameKeyPressed = __validKey;
-
-            /**
-             * Game field
-             *
-             * The game field will be centered in the window horizontally.
-             * Width and height should be 75% of the window width/height.
-             * Should they be different, the minimum of two will be used.
-             */
-            auto& matrix = game.matrix;
-            unsigned int
-                baseDimension = std::min(windowSize.x, windowSize.y),
-                matrixSide = baseDimension / 4 * 3;
-            unsigned int
-                baseX = (windowSize.x - matrixSide) >> 1, baseY = (windowSize.y - matrixSide) >> 1,
-                cellSide = matrixSide / matrix[0].size(),
-                borderSize = cellSide / 8;
-                cellSide -= borderSize;
-            for (auto rowIndex = 0 ; rowIndex < matrix.size() ; rowIndex++)
-                for (auto cellIndex = 0 ; cellIndex < matrix[rowIndex].size() ; cellIndex++)
-                {
-                    auto cell = renderCell(matrix[rowIndex][cellIndex], cellSide, baseDimension / 20);
-                    sf::Sprite cellSprite (cell);
-                    auto renderCellSide = cell.getSize().x;
-                    cellSprite.setPosition(baseX + cellIndex * (renderCellSide + borderSize), baseY + rowIndex * (renderCellSide + borderSize));
-                    window.draw(cellSprite);
-                }
-
-            auto lastKeyElapsedMsec = globalClock.getElapsedTime().asMilliseconds() - lastKeyPressedTime.asMilliseconds();
-            auto paddedScanTimeMsec = (1 + scanWidthMultiplier) * scanTimeMsec;
-            if (lastKeyPressedTime.asMilliseconds() && lastKeyElapsedMsec < paddedScanTimeMsec) {
-                auto scanCoverage = (cellSide + cellOutlineThickness * 2) * matrix.size() + (matrix.size() - 1) * borderSize;
-                auto scanWidth = scanCoverage * scanWidthMultiplier;
-                bool increment = true; gameSize from = 0, to = scanWidth;
-                auto progress = float(scanTimeMsec - lastKeyElapsedMsec) / scanTimeMsec;
-                switch (lastMovement) {
-                    case gameMovement::Down:
-                    case gameMovement::Right:
-                        increment = false; from = scanWidth, to = 0; progress = 1 - progress;
-                    case gameMovement::Up:
-                    case gameMovement::Left: {
-                        for (auto i = from ; (from > to ? i > to : i < to) ; increment ? i++ : i--) {
-                            auto y = baseY
-                                + progress * matrixSide
-                                + (matrixSide / 2) - scanWidth + 1 + i;
-                            auto x = baseX
-                                + progress * matrixSide
-                                + (matrixSide / 2) - scanWidth + 1 + i;
-                            sf::RectangleShape scan;
-                            auto c = sf::Color::White;
-                            if (lastMovement == gameMovement::Up || lastMovement == gameMovement::Down) {
-                                if (y < baseY || y > baseY + scanCoverage) continue;
-                                scan.setSize(sf::Vector2f(scanCoverage, 1));
-                                scan.setPosition(baseX, y);
-                                c.a = 0xFF * ((lastMovement == gameMovement::Up ? 1 - float(i + 1) : float(i + 1)) / scanWidth);
-                            }
-
-                            if (lastMovement == gameMovement::Left || lastMovement == gameMovement::Right) {
-                                if (x < baseX || x > baseX + scanCoverage) continue;
-                                scan.setSize(sf::Vector2f(1, scanCoverage));
-                                scan.setPosition(x, baseY);
-                                c.a = 0xFF * ((lastMovement == gameMovement::Left ? 1 - float(i + 1) : float(i + 1)) / scanWidth);
-                            }
-
-
-                            scan.setFillColor(c);
-                            window.draw(scan);
-                        }
-                    }
-                };
-            }
-
-            /**
-             * Score
-             */
-            auto __ = renderScore(game.score, windowSize.x / 10 * 2, windowSize.y / 20 * 2);
-            sf::Sprite score (__);
-            score.setPosition(windowSize.x / 2 - score.getGlobalBounds().width / 2, windowSize.y / 15 - score.getGlobalBounds().height / 2);
-            window.draw(score);
-        }
 
         window.display();
     }
