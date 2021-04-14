@@ -1,4 +1,4 @@
 enum gameAction
 {
-    Mute = 1, Pause
+    Mute = 1, Pause, Lose
 };

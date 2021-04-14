@@ -89,6 +89,7 @@ bool gameState::handleMove(gameMovement move)
         case gameMovement::Up:
         case gameMovement::Down:
         {
+            if (this->lost) return false;
             for (auto columnIndex = 0 ; columnIndex < this->matrix.size() ; columnIndex++)
             {
                 std::vector<gameValue> column; column.reserve(this->matrix.size());
@@ -110,6 +111,7 @@ bool gameState::handleMove(gameMovement move)
         case gameMovement::Left:
         case gameMovement::Right:
         {
+            if (this->lost) return false;
             for (auto &row : this->matrix)
             {
                 if (move == gameMovement::Right) std::reverse(row.begin(), row.end());
@@ -129,6 +131,8 @@ bool gameState::handleMove(gameMovement move)
             return true;
         }
     }
+
+    this->lost = this->checkLosingState();
 
     if (changed)
     if (this->count() != this->matrix.size() * this->matrix.size())

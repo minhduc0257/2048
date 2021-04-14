@@ -13,7 +13,7 @@
 
 int cellOutlineThickness = 1;
 float scanWidthMultiplier = 0.5;
-int scanTimeMsec = 500;
+int scanTimeMsec = 100;
 bool hasGameKeyPressed = true;
 bool muted = false;
 bool paused = false;
@@ -21,7 +21,8 @@ bool hasActionKeyPressed = true;
 std::unordered_map<sf::Keyboard::Key, gameAction> ACTIONS
 {
     std::make_pair(sf::Keyboard::M, gameAction::Mute),
-    std::make_pair(sf::Keyboard::Escape, gameAction::Pause)
+    std::make_pair(sf::Keyboard::Escape, gameAction::Pause),
+    std::make_pair(sf::Keyboard::L, gameAction::Lose)
 };
 
 std::unordered_map<sf::Keyboard::Key, gameMovement> MOVEMENTS
@@ -195,6 +196,10 @@ void entry()
                         paused = !paused;
                         break;
                     }
+                    case gameAction::Lose: {
+                        game.lost = !game.lost;
+                        break;
+                    }
                 }
             }
             hasActionKeyPressed = __validActionKey;
@@ -271,18 +276,19 @@ void entry()
                             + (matrixSide / 2) - scanWidth + 1 + i;
                         sf::RectangleShape scan;
                         auto c = sf::Color::White;
+                        const int maximumAlpha = 128;
                         if (lastMovement == gameMovement::Up || lastMovement == gameMovement::Down) {
                             if (y < baseY || y > baseY + scanCoverage) continue;
                             scan.setSize(sf::Vector2f(scanCoverage, 1));
                             scan.setPosition(baseX, y);
-                            c.a = 0xC0 * ((lastMovement == gameMovement::Up ? 1 - float(i + 1) : float(i + 1)) / scanWidth);
+                            c.a = maximumAlpha * ((lastMovement == gameMovement::Up ? 1 - float(i + 1) : float(i + 1)) / scanWidth);
                         }
 
                         if (lastMovement == gameMovement::Left || lastMovement == gameMovement::Right) {
                             if (x < baseX || x > baseX + scanCoverage) continue;
                             scan.setSize(sf::Vector2f(1, scanCoverage));
                             scan.setPosition(x, baseY);
-                            c.a = 0xFF * ((lastMovement == gameMovement::Left ? 1 - float(i + 1) : float(i + 1)) / scanWidth);
+                            c.a = maximumAlpha * ((lastMovement == gameMovement::Left ? 1 - float(i + 1) : float(i + 1)) / scanWidth);
                         }
 
 
@@ -301,14 +307,14 @@ void entry()
         score.setPosition(windowSize.x / 2 - score.getGlobalBounds().width / 2, windowSize.y / 15 - score.getGlobalBounds().height / 2);
         window.draw(score);
 
-        if (paused) {
+        if (paused || game.lost) {
             sf::RectangleShape _;
             _.setSize(sf::Vector2f(windowSize));
             _.setFillColor(sf::Color(0xFF, 0xFF, 0xFF, 0xFF / 5 * 4));
             _.setPosition(0, 0);
 
 
-            sf::Text pausedText ("Paused", latoBold, 50);
+            sf::Text pausedText (game.lost ? "LOST" : "PAUSED", latoBold, 50);
             auto textBoundaryBox = pausedText.getGlobalBounds();
             pausedText.setPosition(windowSize.x / 2 - textBoundaryBox.width / 2, windowSize.y / 2 - textBoundaryBox.height / 2);
             pausedText.setFillColor(sf::Color::Black);
@@ -323,7 +329,7 @@ void entry()
         currentFrameTime = globalClock.getElapsedTime();
         float fps = 1.0f / (currentFrameTime.asSeconds() - previousFrameTime.asSeconds());
         previousFrameTime = currentFrameTime;
-        sf::Text fpsCounter (std::to_string(long(ceil(fps))) + " FPS" + (muted ? " - Muted" : "") + (paused ? " - Paused" : ""), robotoMono, 14);
+        sf::Text fpsCounter (std::to_string(long(ceil(fps))) + " FPS" + (muted ? " - Muted" : "") + (game.lost ? " - Lost" : ""), robotoMono, 14);
         fpsCounter.setPosition(
             std::min<unsigned int>(windowSize.x / 100, 5),
             (windowSize.y * 99.5f / 100) - fpsCounter.getGlobalBounds().height - fpsCounter.getGlobalBounds().top - 1
