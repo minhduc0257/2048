@@ -23,9 +23,6 @@ void gameState::initialize()
     this->matrix.resize(this->size);
     for (auto &row : this->matrix) row.assign(this->size, 0);
 
-    if (this->random_source.entropy() == 0)
-        LOG("random_device entropy is zero; randomness will be severely limited.\n")
-
     const int max = 2; int made = 0;
     while (made < max) made += this->newCell();
 }

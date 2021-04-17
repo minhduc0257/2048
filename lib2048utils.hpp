@@ -1,8 +1,6 @@
-#include <stdio.h>
 #include <string>
 #include <vector>
 #include <SFML/Graphics.hpp>
-#define LOG(r) printf("%s", r);
 
 #ifndef _2048UTILS
 #define _2048UTILS
