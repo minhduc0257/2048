@@ -15,7 +15,7 @@ set(ASSETS
     color.txt
     color2.txt)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 
 # add the executable
 add_executable(2048 2048.cpp)

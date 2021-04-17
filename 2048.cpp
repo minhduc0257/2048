@@ -14,15 +14,19 @@
 int cellOutlineThickness = 1;
 float scanWidthMultiplier = 0.5;
 int scanTimeMsec = 100;
+int notificationTimeMsec = 2000;
 bool hasGameKeyPressed = true;
 bool muted = false;
 bool paused = false;
 bool hasActionKeyPressed = true;
+int allowedFPS[] = { 0, 60, 120, 240, 480 };
+int currentFPSSetting = 1;
 std::unordered_map<sf::Keyboard::Key, gameAction> ACTIONS
 {
     std::make_pair(sf::Keyboard::M, gameAction::Mute),
     std::make_pair(sf::Keyboard::Escape, gameAction::Pause),
     // std::make_pair(sf::Keyboard::L, gameAction::Lose)
+    std::make_pair(sf::Keyboard::F7, gameAction::CycleFPS)
 };
 
 std::unordered_map<sf::Keyboard::Key, gameMovement> MOVEMENTS
@@ -35,6 +39,7 @@ std::unordered_map<sf::Keyboard::Key, gameMovement> MOVEMENTS
 };
 
 sf::Clock globalClock;
+sf::Time lastNotificationTime; std::string notification;
 sf::Time lastKeyPressedTime; gameMovement lastMovement = gameMovement::Up;
 sf::Time previousFrameTime, currentFrameTime;
 sf::Font robotoMono, montserratRegular, latoBold;
@@ -200,6 +205,25 @@ void entry()
                         game.lost = !game.lost;
                         break;
                     }
+                    case gameAction::CycleFPS: {
+                        auto _ = std::size(allowedFPS);
+                        if (currentFPSSetting >= _ || currentFPSSetting < 0)
+                        {
+                            currentFPSSetting = 1;
+                            auto fps = allowedFPS[currentFPSSetting];
+                            window.setFramerateLimit(fps);
+                            notification = "Setting framerate limit to " + (fps ? std::to_string(fps) + "FPS" : "unlimited") + ".";
+                            lastNotificationTime = globalClock.getElapsedTime();
+                        }
+                        else
+                        {
+                            currentFPSSetting = (currentFPSSetting + 1) % _;
+                            auto fps = allowedFPS[currentFPSSetting];
+                            window.setFramerateLimit(fps);
+                            lastNotificationTime = globalClock.getElapsedTime();
+                            notification = "Setting framerate limit to " + (fps ? std::to_string(fps) + "FPS" : "unlimited") + ".";
+                        }
+                    }
                 }
             }
             hasActionKeyPressed = __validActionKey;
@@ -336,6 +360,22 @@ void entry()
         );
         fpsCounter.setFillColor(sf::Color::Black);
         window.draw(fpsCounter);
+
+        /**
+         * Notification
+         */
+        sf::Text notify (notification, robotoMono, 14);
+        notify.setPosition(
+            std::min<unsigned int>(windowSize.x / 100, 5),
+            std::min<unsigned int>(windowSize.y / 100, 5)
+        );
+        auto notifyColor = sf::Color::Black;
+        auto notifyAppearancePercentage =
+            float(globalClock.getElapsedTime().asMilliseconds() - lastNotificationTime.asMilliseconds())
+            / notificationTimeMsec;
+        notifyColor.a = notifyAppearancePercentage > 1 ? 0 : float(1 - notifyAppearancePercentage) * 255;
+        notify.setFillColor(notifyColor);
+        window.draw(notify);
 
         window.display();
     }
