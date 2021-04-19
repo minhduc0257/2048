@@ -133,7 +133,9 @@ bool gameState::handleMove(gameMovement move)
     }
 
     if (changed)
-    if (this->count() != this->matrix.size() * this->matrix.size()) this->newCell();
+    if (this->count() != this->matrix.size() * this->matrix.size())
+        for (auto i = this->size >> 2 ; i ; i--)
+            this->newCell();
 
     this->lost = this->checkLosingState();
 
