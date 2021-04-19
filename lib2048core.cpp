@@ -69,7 +69,7 @@ std::pair<std::vector<gameValue>, gameValue> __merge(std::vector<gameValue>& arr
         if ((i + 1) < elements.size() && elements[i + 1] == elements[i])
         {
             merged.push_back(elements[i++] * 2);
-            out += elements[i++] * 2;
+            out += elements[i] * 2;
         }
         else
             merged.push_back(elements[i]);
