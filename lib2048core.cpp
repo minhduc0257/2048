@@ -14,6 +14,7 @@ gameState::gameState(gameSize size)
     this->size = size;
     this->matrix.resize(size);
     for (auto &row : this->matrix) row.assign(this->size, 0);
+    this->random = std::mt19937_64 (std::chrono::system_clock::now().time_since_epoch().count());
 }
 
 void gameState::initialize()
@@ -29,11 +30,11 @@ void gameState::initialize()
 
 bool gameState::newCell()
 {
-    auto _ = this->random_source() % (this->size * this->size);
-    if (this->matrix[_ / 4][_ % 4])
+    auto _ = this->random() % (this->size * this->size);
+    if (this->matrix[_ / this->size][_ % this->size])
         return false;
     else
-        return (this->matrix[_ / 4][_ % 4] = this->generate());
+        return (this->matrix[_ / this->size][_ % this->size] = this->generate());
 
 }
 
@@ -54,7 +55,7 @@ std::size_t gameState::count()
 
 gameValue gameState::generate()
 {
-    return (this->random_source() % 10) > 8 ? 4 : 2;
+    return (this->random() % 10) > 8 ? 4 : 2;
 }
 
 std::pair<std::vector<gameValue>, gameValue> __merge(std::vector<gameValue>& array)

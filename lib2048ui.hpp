@@ -1,4 +1,4 @@
 enum gameAction
 {
-    Mute = 1, Pause, Lose, CycleFPS
+    Mute = 1, Pause, Lose, CycleFPS, ResizeGame
 };

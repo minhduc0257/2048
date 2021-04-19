@@ -19,14 +19,16 @@ bool hasGameKeyPressed = true;
 bool muted = false;
 bool paused = false;
 bool hasActionKeyPressed = true;
-int allowedFPS[] = { 0, 60, 120, 240, 480 };
-int currentFPSSetting = 1;
+CyclingValues allowedFPS (std::vector<int> { 0, 60, 120, 240, 480 }, 1);
+CyclingValues allowedBoardSizes (std::vector<int> { 4, 8, 16 }, 0);
+
 std::unordered_map<sf::Keyboard::Key, gameAction> ACTIONS
 {
     std::make_pair(sf::Keyboard::M, gameAction::Mute),
     std::make_pair(sf::Keyboard::Escape, gameAction::Pause),
     // std::make_pair(sf::Keyboard::L, gameAction::Lose)
-    std::make_pair(sf::Keyboard::F7, gameAction::CycleFPS)
+    std::make_pair(sf::Keyboard::F7, gameAction::CycleFPS),
+    std::make_pair(sf::Keyboard::N, gameAction::ResizeGame)
 };
 
 std::unordered_map<sf::Keyboard::Key, gameMovement> MOVEMENTS
@@ -147,7 +149,7 @@ void entry()
     auto desktopMode = sf::VideoMode::getDesktopMode();
     sf::RenderWindow window(sf::VideoMode(desktopMode.width * 4 / 5, desktopMode.height * 4 / 5), "2048");
 
-    gameState game (4); game.initialize();
+    gameState game (allowedBoardSizes.current()); game.initialize();
 
     bool hasFocus = true;
 
@@ -205,24 +207,18 @@ void entry()
                         game.lost = !game.lost;
                         break;
                     }
+                    case gameAction::ResizeGame: {
+                        allowedBoardSizes.advance();
+                        game = gameState (allowedBoardSizes.current());
+                        game.initialize();
+                        break;
+                    }
                     case gameAction::CycleFPS: {
-                        auto _ = std::size(allowedFPS);
-                        if (currentFPSSetting >= _ || currentFPSSetting < 0)
-                        {
-                            currentFPSSetting = 1;
-                            auto fps = allowedFPS[currentFPSSetting];
-                            window.setFramerateLimit(fps);
-                            notification = "Setting framerate limit to " + (fps ? std::to_string(fps) + "FPS" : "unlimited") + ".";
-                            lastNotificationTime = globalClock.getElapsedTime();
-                        }
-                        else
-                        {
-                            currentFPSSetting = (currentFPSSetting + 1) % _;
-                            auto fps = allowedFPS[currentFPSSetting];
-                            window.setFramerateLimit(fps);
-                            lastNotificationTime = globalClock.getElapsedTime();
-                            notification = "Setting framerate limit to " + (fps ? std::to_string(fps) + "FPS" : "unlimited") + ".";
-                        }
+                        allowedFPS.advance();
+                        auto fps = allowedFPS.current();
+                        window.setFramerateLimit(fps);
+                        notification = "Setting framerate limit to " + (fps ? std::to_string(fps) + "FPS" : "unlimited") + ".";
+                        lastNotificationTime = globalClock.getElapsedTime();
                     }
                 }
             }

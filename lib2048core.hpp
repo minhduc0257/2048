@@ -3,6 +3,7 @@
 #include <string>
 #include <map>
 #include <cstdint>
+#include <chrono>
 #include <SFML/Graphics.hpp>
 
 #ifndef _2048CORE
@@ -36,7 +37,7 @@ class gameState
     private:
         bool checkLosingState();
         gameSize size;
-        std::random_device random_source;
+        std::mt19937_64 random;
         gameValue generate();
         bool newCell();
         std::size_t count();

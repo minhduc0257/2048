@@ -43,5 +43,20 @@ inline std::string trim(std::string s) {
     return trim_right(trim_left(s));
 }
 
+template<class T>
+class CyclingValues
+{
+    private:
+        std::vector<T> values;
+        std::size_t currentIndex = 0;
+    public:
+        CyclingValues(std::vector<T> values, std::size_t initialIndex = 0)
+        {
+            this->currentIndex = initialIndex;
+            this->values = values;
+        }
+        T current() { return this->values[this->currentIndex]; }
+        void advance() { this->currentIndex = (this->currentIndex + 1) % this->values.size(); }
+};
 
 #endif
