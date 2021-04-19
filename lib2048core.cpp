@@ -24,7 +24,7 @@ void gameState::initialize()
     this->matrix.resize(this->size);
     for (auto &row : this->matrix) row.assign(this->size, 0);
 
-    const int max = 2; int made = 0;
+    const int max = this->size >> 1; int made = 0;
     while (made < max) made += this->newCell();
 }
 
