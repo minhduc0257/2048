@@ -276,29 +276,32 @@ void entry()
             }
             hasActionKeyPressed = __validActionKey;
 
-            if (!paused) {
-                /**
-                 * Handle keys
-                 */
-                auto __currentGameKey = std::find_if(
-                    MOVEMENTS.begin(), MOVEMENTS.end(),
-                    [](std::pair<sf::Keyboard::Key, gameMovement> _) { return sf::Keyboard::isKeyPressed(_.first); }
-                );
-                bool __validKey = __currentGameKey != MOVEMENTS.end();
-                if (__validKey && !hasGameKeyPressed)
+            auto __currentGameKey = std::find_if(
+                MOVEMENTS.begin(), MOVEMENTS.end(),
+                [](std::pair<sf::Keyboard::Key, gameMovement> _) { return sf::Keyboard::isKeyPressed(_.first); }
+            );
+            bool __validKey = __currentGameKey != MOVEMENTS.end();
+
+            if (__validKey && !hasGameKeyPressed)
+            {
+                auto move = MOVEMENTS[__currentGameKey->first];
+                if (move == gameMovement::META_Restart) paused = false;
+                if (!paused)
                 {
                     slowDown = false;
-                    auto changed = game.handleMove(MOVEMENTS[__currentGameKey->first]);
+                    auto changed = game.handleMove(move);
+
                     if (changed) {
                         keyClicked.play();
                         lastKeyPressedTime = globalClock.getElapsedTime();
-                        lastMovement = MOVEMENTS[__currentGameKey->first];
+                        lastMovement = move;
                     }
                     else
                         keyClickedFail.play();
                 }
-                hasGameKeyPressed = __validKey;
             }
+            hasGameKeyPressed = __validKey;
+
         }
 
         auto lastKeyElapsedMsec = globalClock.getElapsedTime().asMilliseconds() - lastKeyPressedTime.asMilliseconds();
@@ -312,7 +315,7 @@ void entry()
             && !(lastKeyPressedTime.asMilliseconds() && lastKeyElapsedMsec < paddedScanTimeMsec)
             && (paused || game.lost) && !hasFocus
         )
-            window.setFramerateLimit(15);
+            continue;
         else
             window.setFramerateLimit(allowedFPS.current());
 
