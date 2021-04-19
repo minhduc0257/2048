@@ -30,12 +30,14 @@ void gameState::initialize()
 
 bool gameState::newCell()
 {
-    auto _ = this->random() % (this->size * this->size);
-    if (this->matrix[_ / this->size][_ % this->size])
-        return false;
-    else
-        return (this->matrix[_ / this->size][_ % this->size] = this->generate());
+    std::vector<std::size_t> positions;
+    for (auto _ = 0 ; _ < this->size * this->size ; _++)
+        if (!this->matrix[_ / this->size][_ % this->size])
+            positions.push_back(_);
+    if (!positions.size()) return false;
 
+    auto _ = positions[this->random() % positions.size()];
+    return (this->matrix[_ / this->size][_ % this->size] = this->generate());
 }
 
 std::size_t gameState::count()
@@ -131,11 +133,7 @@ bool gameState::handleMove(gameMovement move)
     }
 
     if (changed)
-    if (this->count() != this->matrix.size() * this->matrix.size())
-    {
-        bool __new = this->newCell();
-        while (!__new) __new = this->newCell();
-    }
+    if (this->count() != this->matrix.size() * this->matrix.size()) this->newCell();
 
     this->lost = this->checkLosingState();
 
