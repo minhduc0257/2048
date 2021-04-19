@@ -223,7 +223,7 @@ void entry()
         keyClicked.setVolume((muted || paused) ? 0 : 100);
         keyClickedFail.setVolume((muted || paused) ? 0 : 100);
 
-        bool _continue = false;
+        bool slowDown = true;
 
         if (hasFocus) {
             /**
@@ -236,7 +236,7 @@ void entry()
             bool __validActionKey = __currentActionKey != ACTIONS.end();
             if (__validActionKey && !hasActionKeyPressed)
             {
-                _continue = true;
+                slowDown = true;
                 auto _ = ACTIONS[__currentActionKey->first];
                 switch (_) {
                     case gameAction::Mute: {
@@ -245,10 +245,12 @@ void entry()
                     }
                     case gameAction::Pause: {
                         paused = !paused;
+                        slowDown = false;
                         break;
                     }
                     case gameAction::Lose: {
                         game.lost = !game.lost;
+                        slowDown = false;
                         break;
                     }
                     case gameAction::ResizeGame: {
@@ -256,6 +258,7 @@ void entry()
                         allowedBoardSizes.advance();
                         game = gameState (allowedBoardSizes.current());
                         game.initialize();
+                        slowDown = false;
                         break;
                     }
                     case gameAction::CycleFPS: {
@@ -264,6 +267,7 @@ void entry()
                         window.setFramerateLimit(fps);
                         notification = "Setting framerate limit to " + (fps ? std::to_string(fps) + "FPS" : "unlimited") + ".";
                         lastNotificationTime = globalClock.getElapsedTime();
+                        slowDown = false;
                     }
                 }
             }
@@ -280,6 +284,7 @@ void entry()
                 bool __validKey = __currentGameKey != MOVEMENTS.end();
                 if (__validKey && !hasGameKeyPressed)
                 {
+                    slowDown = false;
                     auto changed = game.handleMove(MOVEMENTS[__currentGameKey->first]);
                     if (changed) {
                         keyClicked.play();
@@ -291,10 +296,22 @@ void entry()
                 }
                 hasGameKeyPressed = __validKey;
             }
-
-            if (_continue) continue;
         }
 
+        auto lastKeyElapsedMsec = globalClock.getElapsedTime().asMilliseconds() - lastKeyPressedTime.asMilliseconds();
+        auto paddedScanTimeMsec = (1 + scanWidthMultiplier) * scanTimeMsec;
+
+        auto currentMsec = globalClock.getElapsedTime().asMilliseconds();
+        if (slowDown
+            // has notification ongoing?
+            && (lastNotificationTime.asMilliseconds() + notificationTimeMsec > currentMsec)
+            // has key animation ?
+            && !(lastKeyPressedTime.asMilliseconds() && lastKeyElapsedMsec < paddedScanTimeMsec)
+            && (paused || game.lost) && !hasFocus
+        )
+            window.setFramerateLimit(15);
+        else
+            window.setFramerateLimit(allowedFPS.current());
 
         /**
          * Game field
@@ -322,8 +339,7 @@ void entry()
                 window.draw(cellSprite);
             }
 
-        auto lastKeyElapsedMsec = globalClock.getElapsedTime().asMilliseconds() - lastKeyPressedTime.asMilliseconds();
-        auto paddedScanTimeMsec = (1 + scanWidthMultiplier) * scanTimeMsec;
+
         if (lastKeyPressedTime.asMilliseconds() && lastKeyElapsedMsec < paddedScanTimeMsec) {
             auto scanCoverage = (cellSide + cellOutlineThickness * 2) * matrix.size() + (matrix.size() - 1) * borderSize;
             auto scanWidth = scanCoverage * scanWidthMultiplier;
