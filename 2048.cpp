@@ -40,6 +40,10 @@ std::unordered_map<sf::Keyboard::Key, gameMovement> MOVEMENTS
     std::make_pair(sf::Keyboard::R, gameMovement::META_Restart)
 };
 
+std::unordered_map<gameValue, sf::Texture> cellTextures;
+std::pair<gameValue, sf::Texture> scoreTexture = std::make_pair(-1, sf::Texture());
+sf::Texture pausingScreen;
+
 sf::Clock globalClock;
 sf::Time lastNotificationTime; std::string notification;
 sf::Time lastKeyPressedTime; gameMovement lastMovement = gameMovement::Up;
@@ -68,6 +72,28 @@ void initializeGlobals()
     config.setup();
 }
 
+void renderPausingScreen(sf::Vector2f windowSize, gameState game)
+{
+    sf::RenderTexture pausingScreenTexture;
+    pausingScreenTexture.create(windowSize.x, windowSize.y);
+    pausingScreenTexture.clear(sf::Color::Transparent);
+    sf::RectangleShape _;
+    _.setSize(sf::Vector2f(windowSize));
+    _.setFillColor(sf::Color(0xFF, 0xFF, 0xFF, 230));
+    _.setPosition(0, 0);
+
+
+    sf::Text pausedText (game.lost ? "LOST" : "PAUSED", latoBold, 50);
+    auto textBoundaryBox = pausedText.getGlobalBounds();
+    pausedText.setPosition(windowSize.x / 2 - textBoundaryBox.width / 2, windowSize.y / 2 - textBoundaryBox.height / 2);
+    pausedText.setFillColor(sf::Color::Black);
+
+    pausingScreenTexture.draw(_);
+    pausingScreenTexture.draw(pausedText);
+    pausingScreenTexture.display();
+    pausingScreen = pausingScreenTexture.getTexture();
+}
+
 sf::Color getCellColor(gameValue value)
 {
     sf::Color _;
@@ -83,8 +109,10 @@ sf::Color getTextColor(gameValue value)
     return sf::Color(0, 0, 0);
 }
 
-sf::Texture renderCell(gameValue value, unsigned int cellSide, unsigned int fontSize)
+sf::Texture renderCell(gameValue value, unsigned int cellSide, float fontSize)
 {
+    if (cellTextures.count(value)) return cellTextures[value];
+
     sf::RenderTexture cell;
     unsigned int renderCellSide = cellSide + cellOutlineThickness * 2;
     cell.create(renderCellSide, renderCellSide);
@@ -111,11 +139,13 @@ sf::Texture renderCell(gameValue value, unsigned int cellSide, unsigned int font
     cell.draw(text);
     cell.display();
 
-    return cell.getTexture();
+    return cellTextures[value] = cell.getTexture();
 }
 
 sf::Texture renderScore(gameValue score, unsigned int width, unsigned int height)
 {
+    if (score == scoreTexture.first) return scoreTexture.second;
+
     sf::RenderTexture _score;
     _score.create(width + cellOutlineThickness * 2, height + cellOutlineThickness * 2);
     _score.clear(sf::Color::Transparent);
@@ -140,6 +170,8 @@ sf::Texture renderScore(gameValue score, unsigned int width, unsigned int height
     _score.draw(text);
     _score.display();
 
+    scoreTexture = std::make_pair(score, _score.getTexture());
+
     return _score.getTexture();
 }
 
@@ -158,6 +190,7 @@ void entry()
     window.setTitle("2048");
 
     sf::Sound(_keyClicked).play();
+    renderPausingScreen(sf::Vector2f(window.getSize()), game);
 
     while (window.isOpen())
     {
@@ -172,7 +205,12 @@ void entry()
          * Resize the view port should the window get resized
          */
         if (event.type == sf::Event::Resized)
+        {
             window.setView(sf::View(sf::FloatRect(0, 0, event.size.width, event.size.height)));
+            cellTextures.clear();
+            scoreTexture = std::make_pair(-1, sf::Texture());
+            renderPausingScreen(sf::Vector2f(window.getSize()), game);
+        }
         window.clear(sf::Color(0xd6d5d200));
         auto windowSize = window.getSize();
 
@@ -208,6 +246,7 @@ void entry()
                         break;
                     }
                     case gameAction::ResizeGame: {
+                        cellTextures.clear();
                         allowedBoardSizes.advance();
                         game = gameState (allowedBoardSizes.current());
                         game.initialize();
@@ -267,7 +306,7 @@ void entry()
         for (auto rowIndex = 0 ; rowIndex < matrix.size() ; rowIndex++)
             for (auto cellIndex = 0 ; cellIndex < matrix[rowIndex].size() ; cellIndex++)
             {
-                auto cell = renderCell(matrix[rowIndex][cellIndex], cellSide, baseDimension / 20);
+                auto cell = renderCell(matrix[rowIndex][cellIndex], cellSide, float(cellSide) / 2.5);
                 sf::Sprite cellSprite (cell);
                 auto renderCellSide = cell.getSize().x;
                 cellSprite.setPosition(baseX + cellIndex * (renderCellSide + borderSize), baseY + rowIndex * (renderCellSide + borderSize));
@@ -327,21 +366,7 @@ void entry()
         score.setPosition(windowSize.x / 2 - score.getGlobalBounds().width / 2, windowSize.y / 15 - score.getGlobalBounds().height / 2);
         window.draw(score);
 
-        if (paused || game.lost) {
-            sf::RectangleShape _;
-            _.setSize(sf::Vector2f(windowSize));
-            _.setFillColor(sf::Color(0xFF, 0xFF, 0xFF, 0xFF / 5 * 4));
-            _.setPosition(0, 0);
-
-
-            sf::Text pausedText (game.lost ? "LOST" : "PAUSED", latoBold, 50);
-            auto textBoundaryBox = pausedText.getGlobalBounds();
-            pausedText.setPosition(windowSize.x / 2 - textBoundaryBox.width / 2, windowSize.y / 2 - textBoundaryBox.height / 2);
-            pausedText.setFillColor(sf::Color::Black);
-
-            window.draw(_);
-            window.draw(pausedText);
-        }
+        if (paused || game.lost) window.draw(sf::Sprite(pausingScreen));
 
         /**
          * FPS counter
@@ -360,18 +385,20 @@ void entry()
         /**
          * Notification
          */
-        sf::Text notify (notification, robotoMono, 14);
-        notify.setPosition(
-            std::min<unsigned int>(windowSize.x / 100, 5),
-            std::min<unsigned int>(windowSize.y / 100, 5)
-        );
-        auto notifyColor = sf::Color::Black;
         auto notifyAppearancePercentage =
             float(globalClock.getElapsedTime().asMilliseconds() - lastNotificationTime.asMilliseconds())
             / notificationTimeMsec;
-        notifyColor.a = notifyAppearancePercentage > 1 ? 0 : float(1 - notifyAppearancePercentage) * 255;
-        notify.setFillColor(notifyColor);
-        window.draw(notify);
+        if (notifyAppearancePercentage <= 1) {
+            sf::Text notify (notification, robotoMono, 14);
+            notify.setPosition(
+                std::min<unsigned int>(windowSize.x / 100, 5),
+                std::min<unsigned int>(windowSize.y / 100, 5)
+            );
+            auto notifyColor = sf::Color::Black;
+            notifyColor.a = notifyAppearancePercentage > 1 ? 0 : float(1 - notifyAppearancePercentage) * 255;
+            notify.setFillColor(notifyColor);
+            window.draw(notify);
+        }
 
         window.display();
     }
