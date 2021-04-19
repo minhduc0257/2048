@@ -42,7 +42,7 @@ std::unordered_map<sf::Keyboard::Key, gameMovement> MOVEMENTS
 
 std::unordered_map<gameValue, sf::Texture> cellTextures;
 std::pair<gameValue, sf::Texture> scoreTexture = std::make_pair(-1, sf::Texture());
-sf::Texture pausingScreen;
+std::pair<std::string, sf::Texture> pausingScreen;
 
 sf::Clock globalClock;
 sf::Time lastNotificationTime; std::string notification;
@@ -72,6 +72,7 @@ void initializeGlobals()
     config.setup();
 }
 
+inline std::string getGameStatusString(gameState game) { return game.lost ? "LOST" : "PAUSED"; }
 void renderPausingScreen(sf::Vector2f windowSize, gameState game)
 {
     sf::RenderTexture pausingScreenTexture;
@@ -83,7 +84,7 @@ void renderPausingScreen(sf::Vector2f windowSize, gameState game)
     _.setPosition(0, 0);
 
 
-    sf::Text pausedText (game.lost ? "LOST" : "PAUSED", latoBold, 50);
+    sf::Text pausedText (getGameStatusString(game), latoBold, 50);
     auto textBoundaryBox = pausedText.getGlobalBounds();
     pausedText.setPosition(windowSize.x / 2 - textBoundaryBox.width / 2, windowSize.y / 2 - textBoundaryBox.height / 2);
     pausedText.setFillColor(sf::Color::Black);
@@ -91,7 +92,7 @@ void renderPausingScreen(sf::Vector2f windowSize, gameState game)
     pausingScreenTexture.draw(_);
     pausingScreenTexture.draw(pausedText);
     pausingScreenTexture.display();
-    pausingScreen = pausingScreenTexture.getTexture();
+    pausingScreen = std::make_pair(getGameStatusString(game), pausingScreenTexture.getTexture());
 }
 
 sf::Color getCellColor(gameValue value)
@@ -214,11 +215,15 @@ void entry()
         window.clear(sf::Color(0xd6d5d200));
         auto windowSize = window.getSize();
 
+        if (pausingScreen.first != getGameStatusString(game)) renderPausingScreen(sf::Vector2f(window.getSize()), game);
+
         backgroundMusic.setLoop(true);
         if (backgroundMusic.getStatus() != sf::SoundSource::Status::Playing) backgroundMusic.play();
         backgroundMusic.setVolume((muted || paused) ? 0 : 100);
         keyClicked.setVolume((muted || paused) ? 0 : 100);
         keyClickedFail.setVolume((muted || paused) ? 0 : 100);
+
+        bool _continue = false;
 
         if (hasFocus) {
             /**
@@ -231,6 +236,7 @@ void entry()
             bool __validActionKey = __currentActionKey != ACTIONS.end();
             if (__validActionKey && !hasActionKeyPressed)
             {
+                _continue = true;
                 auto _ = ACTIONS[__currentActionKey->first];
                 switch (_) {
                     case gameAction::Mute: {
@@ -285,7 +291,10 @@ void entry()
                 }
                 hasGameKeyPressed = __validKey;
             }
+
+            if (_continue) continue;
         }
+
 
         /**
          * Game field
@@ -366,21 +375,7 @@ void entry()
         score.setPosition(windowSize.x / 2 - score.getGlobalBounds().width / 2, windowSize.y / 15 - score.getGlobalBounds().height / 2);
         window.draw(score);
 
-        if (paused || game.lost) window.draw(sf::Sprite(pausingScreen));
-
-        /**
-         * FPS counter
-         */
-        currentFrameTime = globalClock.getElapsedTime();
-        float fps = 1.0f / (currentFrameTime.asSeconds() - previousFrameTime.asSeconds());
-        previousFrameTime = currentFrameTime;
-        sf::Text fpsCounter (std::to_string(long(ceil(fps))) + " FPS" + (muted ? " - Muted" : "") + (game.lost ? " - Lost" : ""), robotoMono, 14);
-        fpsCounter.setPosition(
-            std::min<unsigned int>(windowSize.x / 100, 5),
-            (windowSize.y * 99.5f / 100) - fpsCounter.getGlobalBounds().height - fpsCounter.getGlobalBounds().top - 1
-        );
-        fpsCounter.setFillColor(sf::Color::Black);
-        window.draw(fpsCounter);
+        if (paused || game.lost) window.draw(sf::Sprite(pausingScreen.second));
 
         /**
          * Notification
