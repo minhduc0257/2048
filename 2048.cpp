@@ -207,6 +207,9 @@ void entry()
          */
         if (event.type == sf::Event::Resized)
         {
+            notification = std::string("Resizing viewport ")
+                + "to " + std::to_string(event.size.width) + " " + std::to_string(event.size.height);
+            lastNotificationTime = globalClock.getElapsedTime();
             window.setView(sf::View(sf::FloatRect(0, 0, event.size.width, event.size.height)));
             cellTextures.clear();
             scoreTexture = std::make_pair(-1, sf::Texture());
