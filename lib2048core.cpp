@@ -81,7 +81,8 @@ std::pair<std::vector<gameValue>, gameValue> __merge(std::vector<gameValue>& arr
     return std::make_pair(merged, out);
 }
 
-bool gameState::handleMove(gameMovement move)
+
+diff gameState::handleMove(gameMovement move)
 {
     bool changed = false;
     switch (move)
@@ -89,7 +90,7 @@ bool gameState::handleMove(gameMovement move)
         case gameMovement::Up:
         case gameMovement::Down:
         {
-            if (this->lost) return false;
+            if (this->lost) return { false, false };
             for (auto columnIndex = 0 ; columnIndex < this->matrix.size() ; columnIndex++)
             {
                 std::vector<gameValue> column; column.reserve(this->matrix.size());
@@ -111,7 +112,7 @@ bool gameState::handleMove(gameMovement move)
         case gameMovement::Left:
         case gameMovement::Right:
         {
-            if (this->lost) return false;
+            if (this->lost) return { false, false };
             for (auto &row : this->matrix)
             {
                 if (move == gameMovement::Right) std::reverse(row.begin(), row.end());
@@ -128,18 +129,26 @@ bool gameState::handleMove(gameMovement move)
         case gameMovement::META_Restart:
         {
             this->initialize();
-            return true;
+            return { true, true };
+        }
+
+        case gameMovement::META_RandomlyGenerate:
+        {
+            return { false, this->newCell() };
+            break;
         }
     }
+
+    bool generated = false;
 
     if (changed)
     if (this->count() != this->matrix.size() * this->matrix.size())
         for (auto i = this->size >> 2 ; i ; i--)
-            this->newCell();
+            generated = this->newCell();
 
     this->lost = this->checkLosingState();
 
-    return changed;
+    return { changed, generated };
 }
 
 bool gameState::checkLosingState()

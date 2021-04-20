@@ -15,6 +15,7 @@ int cellOutlineThickness = 1;
 float scanWidthMultiplier = 0.5;
 int scanTimeMsec = 100;
 int notificationTimeMsec = 2000;
+int cooldownMsec = 5000;
 bool hasGameKeyPressed = true;
 bool muted = false;
 bool paused = false;
@@ -47,10 +48,12 @@ std::pair<std::string, sf::Texture> pausingScreen;
 sf::Clock globalClock;
 sf::Time lastNotificationTime; std::string notification;
 sf::Time lastKeyPressedTime; gameMovement lastMovement = gameMovement::Up;
+sf::Time lastGeneratingKeyPressedTime, lastPause;
 sf::Time previousFrameTime, currentFrameTime;
 sf::Font robotoMono, montserratRegular, latoBold;
 sf::Sound keyClicked; sf::SoundBuffer _keyClicked;
 sf::Sound keyClickedFail; sf::SoundBuffer _keyClickedFail;
+sf::Sound cooldownGenerated; sf::SoundBuffer _cooldownGenerated;
 sf::Music backgroundMusic;
 gameConfig config;
 
@@ -61,8 +64,10 @@ void initializeGlobals()
     latoBold.loadFromFile("./Lato-Bold.ttf");
     _keyClicked.loadFromFile("./soft-hitsoft.wav");
     _keyClickedFail.loadFromFile("./sectionfail.wav");
+    _cooldownGenerated.loadFromFile("./sectionpass.wav");
     keyClicked = sf::Sound(_keyClicked);
     keyClickedFail = sf::Sound(_keyClickedFail);
+    cooldownGenerated = sf::Sound(_cooldownGenerated);
     backgroundMusic.openFromFile("./pause-loop.wav");
     backgroundMusic.setVolume(50);
 
@@ -202,6 +207,8 @@ void entry()
             if (event.type == sf::Event::LostFocus) { hasFocus = false; paused = true; };
         };
 
+        auto currentTime = globalClock.getElapsedTime();
+
         /**
          * Resize the view port should the window get resized
          */
@@ -209,7 +216,7 @@ void entry()
         {
             notification = std::string("Resizing viewport ")
                 + "to " + std::to_string(event.size.width) + " " + std::to_string(event.size.height);
-            lastNotificationTime = globalClock.getElapsedTime();
+            lastNotificationTime = currentTime;
             window.setView(sf::View(sf::FloatRect(0, 0, event.size.width, event.size.height)));
             cellTextures.clear();
             scoreTexture = std::make_pair(-1, sf::Texture());
@@ -262,6 +269,7 @@ void entry()
                         game = gameState (allowedBoardSizes.current());
                         game.initialize();
                         slowDown = false;
+                        lastGeneratingKeyPressedTime = currentTime;
                         break;
                     }
                     case gameAction::CycleFPS: {
@@ -269,7 +277,7 @@ void entry()
                         auto fps = allowedFPS.current();
                         window.setFramerateLimit(fps);
                         notification = "Setting framerate limit to " + (fps ? std::to_string(fps) + "FPS" : "unlimited") + ".";
-                        lastNotificationTime = globalClock.getElapsedTime();
+                        lastNotificationTime = currentTime;
                         slowDown = false;
                     }
                 }
@@ -291,23 +299,25 @@ void entry()
                     slowDown = false;
                     auto changed = game.handleMove(move);
 
-                    if (changed) {
+                    if (changed.changedByUserInteraction)
+                    {
                         keyClicked.play();
-                        lastKeyPressedTime = globalClock.getElapsedTime();
+                        lastKeyPressedTime = currentTime;
                         lastMovement = move;
                     }
                     else
                         keyClickedFail.play();
+                    if (changed.generated) lastGeneratingKeyPressedTime = currentTime;
                 }
             }
             hasGameKeyPressed = __validKey;
 
         }
 
-        auto lastKeyElapsedMsec = globalClock.getElapsedTime().asMilliseconds() - lastKeyPressedTime.asMilliseconds();
+        auto lastKeyElapsedMsec = currentTime.asMilliseconds() - lastKeyPressedTime.asMilliseconds();
         auto paddedScanTimeMsec = (1 + scanWidthMultiplier) * scanTimeMsec;
 
-        auto currentMsec = globalClock.getElapsedTime().asMilliseconds();
+        auto currentMsec = currentTime.asMilliseconds();
         if (slowDown
             // has notification ongoing?
             && (lastNotificationTime.asMilliseconds() + notificationTimeMsec > currentMsec)
@@ -316,12 +326,36 @@ void entry()
             && (paused || game.lost) && !hasFocus
         )
             continue;
-        else
-            window.setFramerateLimit(allowedFPS.current());
 
-        if (paused || game.lost) window.draw(sf::Sprite(pausingScreen.second));
+        if (paused || game.lost)
+        {
+            if (!lastPause.asMilliseconds()) lastPause = currentTime;
+            window.draw(sf::Sprite(pausingScreen.second));
+        }
         else
         {
+            auto pausedMsec = lastPause.asMilliseconds() ? currentTime.asMilliseconds() - lastPause.asMilliseconds() : 0;
+            lastGeneratingKeyPressedTime = sf::milliseconds(lastGeneratingKeyPressedTime.asMilliseconds() + pausedMsec);
+            lastPause = sf::Time::Zero;
+            auto diff = currentTime.asMilliseconds() - lastGeneratingKeyPressedTime.asMilliseconds();
+            if (cooldownMsec > diff)
+            {
+                auto height = float(windowSize.y) * (cooldownMsec - diff) / cooldownMsec;
+                sf::RectangleShape cooldown (sf::Vector2f(windowSize.x, height));
+                auto fill = sf::Color::White; fill.a = 103;
+                cooldown.setFillColor(fill);
+                cooldown.setPosition(0, windowSize.y - height);
+                window.draw(cooldown);
+            }
+            else
+            {
+                if (game.handleMove(gameMovement::META_RandomlyGenerate).generated)
+                {
+                    lastGeneratingKeyPressedTime = currentTime;
+                    cooldownGenerated.play();
+                }
+            }
+
             /**
              * Game field
              *
@@ -406,7 +440,7 @@ void entry()
          * Notification
          */
         auto notifyAppearancePercentage =
-            float(globalClock.getElapsedTime().asMilliseconds() - lastNotificationTime.asMilliseconds())
+            float(currentTime.asMilliseconds() - lastNotificationTime.asMilliseconds())
             / notificationTimeMsec;
         if (notifyAppearancePercentage <= 1) {
             sf::Text notify (notification, robotoMono, 14);

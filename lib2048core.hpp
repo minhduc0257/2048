@@ -14,7 +14,7 @@ typedef std::size_t gameSize;
 
 enum gameMovement
 {
-    Up = 1, Right, Down, Left, META_Restart
+    Up = 1, Right, Down, Left, META_Restart, META_RandomlyGenerate
 };
 
 class gameConfig
@@ -25,6 +25,8 @@ class gameConfig
         void setup();
 };
 
+struct diff { bool changedByUserInteraction; bool generated; };
+
 class gameState
 {
     public:
@@ -33,7 +35,7 @@ class gameState
         bool lost;
         gameState(gameSize size);
         void initialize();
-        bool handleMove(gameMovement);
+        diff handleMove(gameMovement);
     private:
         bool checkLosingState();
         gameSize size;
