@@ -11,6 +11,7 @@ set(ASSETS
     RobotoMono-Regular.ttf
     pause-loop.wav
     sectionfail.wav
+    sectionpass.wav
     soft-hitsoft.wav
     color.txt
     color2.txt)
