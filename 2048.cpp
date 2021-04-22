@@ -372,8 +372,8 @@ void entry()
                 cellSide = matrixSide / matrix[0].size(),
                 borderSize = cellSide / 8;
                 cellSide -= borderSize;
-            for (auto rowIndex = 0 ; rowIndex < matrix.size() ; rowIndex++)
-                for (auto cellIndex = 0 ; cellIndex < matrix[rowIndex].size() ; cellIndex++)
+            for (gameSize rowIndex = 0 ; rowIndex < matrix.size() ; rowIndex++)
+                for (gameSize cellIndex = 0 ; cellIndex < matrix[rowIndex].size() ; cellIndex++)
                 {
                     auto cell = renderCell(matrix[rowIndex][cellIndex], cellSide, float(cellSide) / 2.5);
                     sf::Sprite cellSprite (cell);
@@ -393,6 +393,7 @@ void entry()
                     case gameMovement::Down:
                     case gameMovement::Right:
                         increment = false; from = scanWidth, to = 0; progress = 1 - progress;
+                        [[fallthrough]];
                     case gameMovement::Up:
                     case gameMovement::Left: {
                         for (auto i = from ; (from > to ? i > to : i < to) ; increment ? i++ : i--) {
@@ -424,6 +425,7 @@ void entry()
                             window.draw(scan);
                         }
                     }
+                    default: break;
                 };
             }
         }
@@ -449,7 +451,7 @@ void entry()
                 std::min<unsigned int>(windowSize.y / 100, 5)
             );
             auto notifyColor = sf::Color::Black;
-            notifyColor.a = notifyAppearancePercentage > 1 ? 0 : float(1 - notifyAppearancePercentage) * 255;
+            notifyColor.a = float(1 - notifyAppearancePercentage) * 255;
             notify.setFillColor(notifyColor);
             window.draw(notify);
         }

@@ -9,7 +9,7 @@ template<class T>
 bool compareVector(std::vector<T>& first, std::vector<T>& second)
 {
     if (first.size() != second.size()) return false;
-    for (auto i = 0 ; i < first.size() ; i++)
+    for (std::size_t i = 0 ; i < first.size() ; i++)
         if (first[i] != second[i]) return false;
     return true;
 }

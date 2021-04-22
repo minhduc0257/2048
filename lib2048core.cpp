@@ -31,7 +31,7 @@ void gameState::initialize()
 bool gameState::newCell()
 {
     std::vector<std::size_t> positions;
-    for (auto _ = 0 ; _ < this->size * this->size ; _++)
+    for (gameSize _ = 0 ; _ < this->size * this->size ; _++)
         if (!this->matrix[_ / this->size][_ % this->size])
             positions.push_back(_);
     if (!positions.size()) return false;
@@ -68,7 +68,7 @@ std::pair<std::vector<gameValue>, gameValue> __merge(std::vector<gameValue>& arr
     for (auto i : array)
         if (i) elements.push_back(i);
 
-    for (auto i = 0 ; i < elements.size() ; i++)
+    for (gameSize i = 0 ; i < elements.size() ; i++)
         if ((i + 1) < elements.size() && elements[i + 1] == elements[i])
         {
             merged.push_back(elements[i++] * 2);
@@ -91,10 +91,12 @@ diff gameState::handleMove(gameMovement move)
         case gameMovement::Down:
         {
             if (this->lost) return { false, false };
-            for (auto columnIndex = 0 ; columnIndex < this->matrix.size() ; columnIndex++)
+            for (gameSize columnIndex = 0 ; columnIndex < this->matrix.size() ; columnIndex++)
             {
-                std::vector<gameValue> column; column.reserve(this->matrix.size());
-                for (auto row : this->matrix) column.push_back(row[columnIndex]);
+                std::vector<gameValue> column (this->matrix.size());
+                std::transform(this->matrix.begin(), this->matrix.end(), column.begin(), [&columnIndex](std::vector<gameValue> row) {
+                    return row[columnIndex];
+                });
 
                 if (move == gameMovement::Down) std::reverse(column.begin(), column.end());
                 auto merged = __merge(column);
@@ -102,7 +104,7 @@ diff gameState::handleMove(gameMovement move)
                 if (move == gameMovement::Down) std::reverse(column.begin(), column.end());
                 if (move == gameMovement::Down) std::reverse(merged.first.begin(), merged.first.end());
 
-                for (auto i = 0 ; i < merged.first.size() ; i++)
+                for (gameSize i = 0 ; i < merged.first.size() ; i++)
                     this->matrix[i][columnIndex] = merged.first[i];
                 this->score += merged.second;
             }
@@ -118,7 +120,6 @@ diff gameState::handleMove(gameMovement move)
                 if (move == gameMovement::Right) std::reverse(row.begin(), row.end());
                 auto merged = __merge(row);
                 changed = changed || (!compareVector(merged.first, row));
-                if (move == gameMovement::Right) std::reverse(row.begin(), row.end());
                 if (move == gameMovement::Right) std::reverse(merged.first.begin(), merged.first.end());
                 row = merged.first;
                 this->score += merged.second;
@@ -135,7 +136,6 @@ diff gameState::handleMove(gameMovement move)
         case gameMovement::META_RandomlyGenerate:
         {
             return { false, this->newCell() };
-            break;
         }
     }
 
@@ -154,8 +154,8 @@ diff gameState::handleMove(gameMovement move)
 bool gameState::checkLosingState()
 {
     auto size = this->matrix.size();
-    for (auto row = 0 ; row < size; row++)
-        for (auto column = 0; column < size; column++)
+    for (gameSize row = 0 ; row < size; row++)
+        for (gameSize column = 0; column < size; column++)
         {
             auto _ = this->matrix[row][column]; if (!_) return false;
 
@@ -187,9 +187,9 @@ std::map<gameValue, sf::Color> loadColorMapping(std::string path)
     std::stringstream buf; buf << (std::ifstream (path)).rdbuf();
     auto lines = split(buf.str(), "\n");
     std::transform(lines.begin(), lines.end(), lines.begin(), trim);
-    std::remove_if(lines.begin(), lines.end(), [](std::string s) { return s.length(); });
+    std::erase_if(lines, [](std::string s) { return !s.length(); });
     std::map<gameValue, sf::Color> ____;
-    std::for_each(lines.begin(), lines.end(), [&____](std::string s) {
+    std::for_each(lines.begin(), lines.end(), [&____](const std::string& s) {
         auto _ = split(s, "=");
         std::transform(_.begin(), _.end(), _.begin(), trim);
         auto cap = std::stoll(_[0]); auto colors = split(_[1], ",");
